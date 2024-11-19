@@ -26,6 +26,7 @@ if __name__ == "__main__":
 
         # unpack model parameters
         alpha, invest_cost, health_delta = row
+        invest_cost, health_delta = int(invest_cost), int(health_delta)
 
         # compute optimal policy
         policy, params, _ = value_iteration(
@@ -53,9 +54,10 @@ if __name__ == "__main__":
         result = {
             "params": params,
             "wealth": wealth,
-            "health": health
+            "health": health,
+            "policy": policy
         }
 
         output_file_name = os.path.join("results", f"{alpha}_{invest_cost}_{row}.pickle")
         with open(output_file_name, 'wb') as f:
-            pickle.dump()
+            pickle.dump(result, f)

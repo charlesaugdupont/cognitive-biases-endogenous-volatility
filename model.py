@@ -28,7 +28,6 @@ def value_iteration(
     health_delta,
     health_decrease_scale
 ):
-    time_start = time.time()
     V = np.zeros((N,N))
     policy = np.zeros((N,N))
     norms = []
