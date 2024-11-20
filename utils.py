@@ -1,6 +1,16 @@
+from scipy.stats.qmc import LatinHypercube
 import matplotlib.pyplot as plt
 import seaborn as sns
 from model import *
+import numpy as np
+
+def generate_samples(num_samples):
+    lh = LatinHypercube(d=4)
+    sample = lh.random(n=num_samples)
+    sample[:, 1] = np.ceil(sample[:,1]*10).astype(int)
+    sample[:, 2] = np.ceil(sample[:,2]*10).astype(int)
+    sample[:, 3] = np.ceil(sample[:,3]*3).astype(int)/3
+    return sample
 
 def plot_utility_transition(util, num_steps):
     fig, axs = plt.subplots(1, 5, figsize=(15,3))

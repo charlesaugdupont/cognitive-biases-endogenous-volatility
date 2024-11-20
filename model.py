@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 def probability_weighting(p, gamma):
     return (p**gamma) / ((p**gamma + (1-p)**gamma)**(1/gamma))
