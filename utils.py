@@ -2,7 +2,6 @@ from scipy.stats.qmc import LatinHypercube
 import matplotlib.pyplot as plt
 import seaborn as sns
 from model import *
-import numpy as np
 
 def generate_samples(num_samples):
     lh = LatinHypercube(d=4)
