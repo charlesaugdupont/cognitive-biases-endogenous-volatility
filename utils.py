@@ -34,6 +34,8 @@ def plot_policy_boundary(policy, params):
     ax.invert_yaxis()
     plt.xticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
     plt.yticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
+    plt.ylabel("Wealth")
+    plt.xlabel("Health")
     plt.show()
 
 
@@ -74,4 +76,15 @@ def plot_agent_w_h_trajectory(policy, params):
     plt.title("Coordinates with Color Gradient from Earliest to Latest Position")
     plt.xlabel("Wealth")
     plt.ylabel("Health")
+    plt.show()
+
+def plot_wealth_health_distribution(wealth, health, N):
+    heatmap, xedges, yedges = np.histogram2d(wealth, health, bins=50)
+    plt.figure(figsize=(8, 6))
+    plt.imshow(heatmap.T, origin='lower', cmap='viridis', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], norm="log")
+    plt.colorbar(label='Count')
+    plt.xlabel('Wealth')
+    plt.ylabel('Health')
+    plt.ylim(0, N)
+    plt.xlim(0, N)
     plt.show()
