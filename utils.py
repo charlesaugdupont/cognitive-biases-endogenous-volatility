@@ -79,7 +79,7 @@ def plot_agent_w_h_trajectory(policy, params):
     plt.show()
 
 def plot_wealth_health_distribution(wealth, health, N):
-    heatmap, xedges, yedges = np.histogram2d(wealth, health, bins=50)
+    heatmap, xedges, yedges = np.histogram2d(wealth, health, bins=75, range=[[0, N], [0, N]])
     plt.figure(figsize=(8, 6))
     plt.imshow(heatmap.T, origin='lower', cmap='viridis', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], norm="log")
     plt.colorbar(label='Count')
