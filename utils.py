@@ -1,4 +1,9 @@
+from scipy.ndimage import gaussian_filter
 from scipy.stats.qmc import LatinHypercube
+from scipy.interpolate import RectBivariateSpline
+from scipy.optimize import basinhopping
+from collections import Counter
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from model import *
@@ -88,3 +93,45 @@ def plot_wealth_health_distribution(wealth, health, N):
     plt.ylim(0, N)
     plt.xlim(0, N)
     plt.show()
+
+def get_interpolation_function(wealth, health):
+    hist, xedges, _ = np.histogram2d(wealth, health, bins=75, range=[(0,200), (0,200)])
+    density = hist / np.sum(hist)
+    with np.errstate(divide='ignore'):
+        potential = -np.log(density)
+        potential[np.isinf(potential)] = np.nan
+
+    # interpolation function
+    max_finite_value = np.nanmax(potential)
+    potential[np.isnan(potential)] = max_finite_value + 1
+    smoothed_potential = gaussian_filter(potential, sigma=1)
+    interp_func = RectBivariateSpline(np.linspace(0,199,len(xedges)-1), np.linspace(0,199,len(xedges)-1), smoothed_potential)
+    return interp_func
+
+def get_minima(interpolator, threshold=0.05, num_points=10):
+
+    def func(xy):
+        x, y = xy
+        return interpolator(x, y)[0][0]
+
+    results = []
+    for i in np.linspace(0, 199, num_points):
+        for j in np.linspace(0, 199, num_points):
+            init = [i,j]
+            minimizer_kwargs = { "method": "L-BFGS-B", "bounds":((0,200),(0,200))}
+            R = basinhopping(func, init, minimizer_kwargs=minimizer_kwargs, stepsize=50)
+            results.append(tuple(R.x.round(2)))
+
+    most_common = Counter(results).most_common()
+    minima = []
+    for item in most_common:
+        count = item[1]
+        if len(minima):
+            if count/minima[0][1] > threshold:
+                minima.append(item)
+            else:
+                break
+        else:
+            minima.append(item)
+
+    return minima
