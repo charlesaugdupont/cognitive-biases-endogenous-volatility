@@ -108,7 +108,7 @@ def get_interpolation_function(wealth, health):
     interp_func = RectBivariateSpline(np.linspace(0,199,len(xedges)-1), np.linspace(0,199,len(xedges)-1), smoothed_potential)
     return interp_func
 
-def get_minima(interpolator, threshold=0.05, num_points=10):
+def get_minima(interpolator, count_threshold=2, num_points=25):
 
     def func(xy):
         x, y = xy
@@ -127,7 +127,7 @@ def get_minima(interpolator, threshold=0.05, num_points=10):
     for item in most_common:
         count = item[1]
         if len(minima):
-            if count/minima[0][1] > threshold:
+            if count >= count_threshold:
                 minima.append(item)
             else:
                 break
