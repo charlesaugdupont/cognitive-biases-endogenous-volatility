@@ -8,6 +8,7 @@ wheels/
 .ipynb_checkpoints/
 .DS_Store
 results/
+*.pickle
 
 # Virtual environments
 .venv
