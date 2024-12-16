@@ -94,8 +94,8 @@ def plot_wealth_health_distribution(wealth, health, N):
     plt.xlim(0, N)
     plt.show()
 
-def get_interpolation_function(wealth, health):
-    hist, xedges, _ = np.histogram2d(wealth, health, bins=75, range=[(0,200), (0,200)])
+def get_interpolation_function(wealth, health, bins=50):
+    hist, xedges, _ = np.histogram2d(wealth, health, bins=bins, range=[(0,200), (0,200)])
     density = hist / np.sum(hist)
     with np.errstate(divide='ignore'):
         potential = -np.log(density)
