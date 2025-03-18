@@ -5,11 +5,12 @@ from scipy.optimize import basinhopping
 from collections import Counter
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import seaborn as sns
 from model import *
 
 def generate_samples(num_samples):
-    lh = LatinHypercube(d=4)
+    lh = LatinHypercube(d=5)
     sample = lh.random(n=num_samples)
     sample[:, 1] = np.ceil(sample[:,1]*10).astype(int)
     sample[:, 2] = np.ceil(sample[:,2]*10).astype(int)
@@ -33,14 +34,32 @@ def plot_utility_trajectories(util):
     plt.ylabel('Utility')
     plt.show()
 
-def plot_policy_boundary(policy, params):
-    plt.figure(figsize=(8, 6))
-    ax = sns.heatmap(policy, cmap="rocket")
-    ax.invert_yaxis()
+def plot_policy_boundary(policy, params, colors=None, savepath=None):
+    plt.figure(figsize=(7, 5))  # Increase figure size
+
+    # Create a custom colormap with the specified colors
+    if colors is None:
+        colors = ["blue", "red"]
+    cmap = ListedColormap(colors)
+
+    # Use imshow with origin='lower' to invert the y-axis
+    plt.imshow(policy, cmap=cmap, interpolation='nearest', origin='lower')
+
+    # Create a color bar
+    cbar = plt.colorbar(ticks=[0.25, 0.75])
+    cbar.ax.set_yticklabels(["Save", "Invest"])
+
+    # Set the tick positions and labels
     plt.xticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
     plt.yticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
+
+    # Label the axes
     plt.ylabel("Wealth")
     plt.xlabel("Health")
+
+    if savepath:
+        plt.savefig(savepath, bbox_inches='tight')
+
     plt.show()
 
 

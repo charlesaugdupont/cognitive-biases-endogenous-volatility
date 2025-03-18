@@ -10,7 +10,7 @@ np.random.seed(23)
 
 def process_row(row, n_steps, n_agents):
     # unpack model parameters
-    alpha, invest_cost, health_delta, health_decrease_scale = row
+    alpha, invest_cost, health_delta, health_decrease_scale, prob_health_increase = row
     invest_cost, health_delta = int(invest_cost), int(health_delta)
 
     # compute optimal policy
@@ -21,7 +21,7 @@ def process_row(row, n_steps, n_agents):
         omega=2.25,
         eta=0.88,
         beta=0.95,
-        P_H_increase=0.9,
+        P_H_increase=prob_health_increase,
         alpha=alpha,
         invest_cost=invest_cost,
         health_delta=health_delta,
