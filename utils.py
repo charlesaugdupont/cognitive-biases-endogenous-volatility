@@ -14,7 +14,7 @@ def generate_samples(num_samples):
     sample = lh.random(n=num_samples)
     sample[:, 1] = np.ceil(sample[:,1]*10).astype(int)
     sample[:, 2] = np.ceil(sample[:,2]*10).astype(int)
-    sample[:, 3] = np.ceil(sample[:,3]*3).astype(int)/3
+    sample[:, 3] = np.ceil(sample[:,3]*4).astype(int)/4
     return sample
 
 def plot_utility_transition(util, num_steps):

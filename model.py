@@ -101,7 +101,7 @@ def value_iteration(
                 policy[i][j] = 1 if invest > save else 0
 
         norm = np.linalg.norm(new_V-V)
-        if (len(norms) and norm > norms[-1]) or norm < 1e-6:
+        if (len(norms) and norm > norms[-1]) or norm < 1e-3:
             break
         norms.append(norm)
         V = new_V
