@@ -11,9 +11,6 @@ def cpt_value(x, theta, omega, eta):
 def utility(w, h, alpha):
     return w**alpha * h**(1 - alpha)
 
-def prob_health_decrease(w, h, N, scale):
-    return  1 - scale*(w/N)*(h/N)
-
 def value_iteration(
     N,
     alpha,
@@ -25,7 +22,7 @@ def value_iteration(
     P_H_increase, 
     invest_cost,
     health_delta,
-    health_decrease_scale
+    P_H_decrease
 ):
     V = np.zeros((N,N))
     policy = np.zeros((N,N))
@@ -42,8 +39,13 @@ def value_iteration(
         "P_H_increase":P_H_increase,
         "invest_cost":invest_cost,
         "health_delta":health_delta,
-        "health_decrease_scale":health_decrease_scale,
+        "P_H_decrease":P_H_decrease,
     }
+
+    cpt_P_increase = probability_weighting(P_H_increase, gamma)
+    cpt_P_increase_complement = probability_weighting(1 - P_H_increase, gamma)
+    cpt_P_decrease = probability_weighting(P_H_decrease, gamma)
+    cpt_P_decrease_complement = probability_weighting(1 - P_H_decrease, gamma)
     
     while True:
         new_V = np.zeros((N,N))
@@ -51,7 +53,6 @@ def value_iteration(
             for j in range(N):
                 w, h = i+1, j+1 # w and h range from 1, 2, ..., to N inclusive
                 reference_utility = utility(w, h, alpha)
-                decrease_prob = prob_health_decrease(w, h, N, health_decrease_scale)
 
                 # compute value of investing
                 weighted_success = 0
@@ -69,13 +70,13 @@ def value_iteration(
                     # apply CPT transformation
                     cpt_delta_success = cpt_value(delta_util_success, theta, omega, eta)
                     cpt_delta_fail = cpt_value(delta_util_fail, theta, omega, eta)
-                    weighted_success = probability_weighting(P_H_increase, gamma) * cpt_delta_success
-                    weighted_fail = probability_weighting(1-P_H_increase, gamma) * cpt_delta_fail
+                    weighted_success = cpt_P_increase * cpt_delta_success
+                    weighted_fail = cpt_P_increase_complement * cpt_delta_fail
 
                     # calculate expected future value of investing
                     val_success = V[i-invest_cost][min(j+health_delta, N-1)]
                     val_fail = V[i-invest_cost][j]
-                    expected_future_val_invest = probability_weighting(P_H_increase, gamma) * val_success + probability_weighting(1-P_H_increase, gamma) * val_fail
+                    expected_future_val_invest = cpt_P_increase * val_success + cpt_P_increase_complement * val_fail
 
                 # compute value of NOT investing
                 utility_save_decrease = utility(w+1, max(h-health_delta, 1), alpha)
@@ -86,12 +87,12 @@ def value_iteration(
 
                 cpt_delta_decrease = cpt_value(delta_util_decrease, theta, omega, eta)
                 cpt_delta_steady = cpt_value(delta_util_steady, theta, omega, eta)
-                weighted_decrease = probability_weighting(decrease_prob, gamma) * cpt_delta_decrease
-                weighted_steady = probability_weighting(1-decrease_prob, gamma) * cpt_delta_steady
+                weighted_decrease = cpt_P_decrease * cpt_delta_decrease
+                weighted_steady = cpt_P_decrease_complement * cpt_delta_steady
 
                 val_decrease = V[min(N-1, i+1)][max(1, j-health_delta)]
                 val_steady = V[min(N-1, i+1)][j]
-                expected_future_val_save = probability_weighting(decrease_prob, gamma) * val_decrease + probability_weighting(1-decrease_prob, gamma) * val_steady
+                expected_future_val_save = cpt_P_decrease * val_decrease + cpt_P_decrease_complement * val_steady
 
                 # compare invest vs. saving
                 invest = weighted_success + weighted_fail + beta * expected_future_val_invest
@@ -110,13 +111,11 @@ def value_iteration(
 
 def simulate(params, policy, num_steps, num_agents):
     N = params["N"]
-    alpha = params["alpha"]
     health_delta = params["health_delta"]
     invest_cost = params["invest_cost"]
     P_H_increase = params["P_H_increase"]
-    health_decrease_scale = params["health_decrease_scale"]
+    P_H_decrease = params["P_H_decrease"]
 
-    util = np.zeros((num_agents, num_steps))
     wealth = np.zeros((num_agents, num_steps), dtype=np.uint8)
     health = np.zeros((num_agents, num_steps), dtype=np.uint8)
     rng = np.random.uniform(0, 1, size=(num_agents, num_steps-1))
@@ -124,7 +123,6 @@ def simulate(params, policy, num_steps, num_agents):
     # Initialize wealth and health for all agents
     w_init = np.random.randint(1, N+1, size=num_agents)
     h_init = np.random.randint(1, N+1, size=num_agents)
-    util[:, 0] = utility(w_init, h_init, alpha) / N
     wealth[:, 0] = w_init
     health[:, 0] = h_init
 
@@ -146,17 +144,15 @@ def simulate(params, policy, num_steps, num_agents):
         w[invest_mask] = np.maximum(w[invest_mask] - invest_cost, 1)
 
         # No invest action
-        decrease_prob = prob_health_decrease(w[no_invest_mask], h[no_invest_mask], N, health_decrease_scale)
         h[no_invest_mask] = np.where(
-            rng[no_invest_mask, step-1] < decrease_prob,
+            rng[no_invest_mask, step-1] < P_H_decrease,
             np.maximum(h[no_invest_mask] - health_delta, 1),
             h[no_invest_mask]
         )
         w[no_invest_mask] = np.minimum(w[no_invest_mask] + 1, N)
 
         # Update utility, wealth, and health
-        util[:, step] = utility(w, h, alpha) / N
         wealth[:, step] = w
         health[:, step] = h
 
-    return util, wealth, health
+    return wealth, health

@@ -9,12 +9,12 @@ from matplotlib.colors import ListedColormap
 import seaborn as sns
 from model import *
 
-def generate_samples(num_samples):
-    lh = LatinHypercube(d=5)
+def generate_samples(num_samples, num_params):
+    lh = LatinHypercube(d=num_params)
     sample = lh.random(n=num_samples)
     sample[:, 1] = np.ceil(sample[:,1]*10).astype(int)
     sample[:, 2] = np.ceil(sample[:,2]*10).astype(int)
-    sample[:, 3] = np.ceil(sample[:,3]*4).astype(int)/4
+    sample[:, 5] = 0.4 + sample[:, 5] * (0.8 - 0.4)
     return sample
 
 def plot_utility_transition(util, num_steps):
@@ -62,21 +62,6 @@ def plot_policy_boundary(policy, params, colors=None, savepath=None):
 
     plt.show()
 
-
-def plot_prob_health_decrease(params):
-    arr = np.zeros((params["N"],params["N"]))
-    for w in range(params["N"]):
-        for h in range(params["N"]):
-            arr[w][h] = prob_health_decrease(w, h, params["N"], params["health_decrease_scale"])
-
-    plt.figure(figsize=(8, 6))
-    ax = sns.heatmap(arr)
-    ax.invert_yaxis()
-    plt.title("Probability of Health Decrease If Not Investing")
-    plt.xticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
-    plt.yticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
-    plt.show()
-
 def plot_agent_w_h_trajectory(policy, params):
     w, h = np.random.randint(0, params["N"], size=2)
     path = [(w, h)]
@@ -86,7 +71,7 @@ def plot_agent_w_h_trajectory(policy, params):
             h = min(h+params["health_delta"], params["N"]) if np.random.uniform() < params["P_H_increase"] else h
             w = max(w-params["invest_cost"], 1)
         else:
-            h = max(h-params["health_delta"], 1) if np.random.uniform() < prob_health_decrease(w, h, params["N"], params["health_decrease_scale"]) else h
+            h = max(h-params["health_delta"], 1) if np.random.uniform() < params["P_H_decrease"] else h
             w = min(w+1, params["N"])
         path.append((w, h))
 
@@ -127,18 +112,18 @@ def get_interpolation_function(wealth, health, bins=50):
     interp_func = RectBivariateSpline(np.linspace(0,199,len(xedges)-1), np.linspace(0,199,len(xedges)-1), smoothed_potential)
     return interp_func
 
-def get_minima(interpolator, count_threshold=2, num_points=25):
+def get_minima(interpolator, count_threshold=2, num_points=25, step_size=50, N=200):
 
     def func(xy):
         x, y = xy
         return interpolator(x, y)[0][0]
 
     results = []
-    for i in np.linspace(0, 199, num_points):
-        for j in np.linspace(0, 199, num_points):
+    for i in np.linspace(0, N-1, num_points):
+        for j in np.linspace(0, N-1, num_points):
             init = [i,j]
-            minimizer_kwargs = { "method": "L-BFGS-B", "bounds":((0,200),(0,200))}
-            R = basinhopping(func, init, minimizer_kwargs=minimizer_kwargs, stepsize=50)
+            minimizer_kwargs = { "method": "L-BFGS-B", "bounds":((0,N),(0,N))}
+            R = basinhopping(func, init, minimizer_kwargs=minimizer_kwargs, stepsize=step_size)
             results.append(tuple(R.x.round(2)))
 
     most_common = Counter(results).most_common()
