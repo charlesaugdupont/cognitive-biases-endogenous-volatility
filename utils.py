@@ -11,9 +11,7 @@ from model import *
 def generate_samples(num_samples, num_params):
     lh = LatinHypercube(d=num_params)
     sample = lh.random(n=num_samples)
-    sample[:, 1] = np.ceil(sample[:,1]*10).astype(int)  # C from 1 to 10
-    sample[:, 2] = np.ceil(sample[:,2]*10).astype(int)  # health_delta from 1 to 10
-    sample[:, 5] = 0.4 + sample[:, 5] * (0.8 - 0.4)     # gamma from 0.4 to 0.8
+    sample[:,3] = 0.4 + sample[:, 5] * (0.8 - 0.4)     # gamma from 0.4 to 0.8
     return sample
 
 def plot_utility_transition(util, num_steps):

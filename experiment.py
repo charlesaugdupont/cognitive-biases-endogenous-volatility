@@ -10,8 +10,7 @@ np.random.seed(23)
 
 def process_row(row, n_steps, n_agents, output_dir):
     # unpack model parameters
-    alpha, invest_cost, health_delta, prob_health_decrease, prob_health_increase, gamma = row
-    invest_cost, health_delta = int(invest_cost), int(health_delta)
+    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale = row
 
     # compute optimal policy
     policy, params, _ = value_iteration(
@@ -20,12 +19,11 @@ def process_row(row, n_steps, n_agents, output_dir):
         omega=2.25,
         eta=0.88,
         beta=0.95,
-        gamma=gamma,
-        P_H_increase=prob_health_increase,
         alpha=alpha,
-        invest_cost=invest_cost,
-        health_delta=health_delta,
-        P_H_decrease=prob_health_decrease
+        P_H_decrease=prob_health_decrease,
+        P_H_increase=prob_health_increase,
+        gamma=gamma,
+        w_delta_scale=w_delta_scale
     )
 
     # run agent simulation
@@ -43,7 +41,7 @@ def process_row(row, n_steps, n_agents, output_dir):
         "policy": policy
     }
 
-    output_file_name = os.path.join(output_dir, f"{alpha}_{invest_cost}_{health_delta}_{prob_health_decrease}_{prob_health_increase}_{gamma}.pickle")
+    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{w_delta_scale}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 
