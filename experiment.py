@@ -65,7 +65,7 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    samples = generate_samples(N_SAMPLES, 6)
+    samples = generate_samples(N_SAMPLES, 5)
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
         for future in tqdm(as_completed(futures), total=len(futures)):
