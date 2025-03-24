@@ -11,7 +11,8 @@ from model import *
 def generate_samples(num_samples, num_params):
     lh = LatinHypercube(d=num_params)
     sample = lh.random(n=num_samples)
-    sample[:,3] = 0.4 + sample[:, 3] * (0.8 - 0.4)     # gamma from 0.4 to 0.8
+    sample[:,0] = sample[:,0] * 1.2                     # alpha from 0 to 1.2
+    sample[:,3] = 0.4 + sample[:, 3] * (0.8 - 0.4)      # gamma from 0.4 to 0.8
     return sample
 
 def plot_utility_transition(util, num_steps):

@@ -19,8 +19,8 @@ def compute_health_delta(h):
 def compute_health_cost(h):
     return - compute_health_delta(h) + 11
 
-def utility(w, h, alpha):
-    return w**alpha * h**(1 - alpha)
+def utility(w, h, alpha, rate=1.2):
+    return w**alpha * h**(rate - alpha)
 
 def value_iteration(
     N,
@@ -70,7 +70,7 @@ def value_iteration(
                 weighted_fail = 0
                 expected_future_val_invest = 0
                 if w > invest_cost:
-                    new_wealth = int(compute_new_wealth(w-invest_cost, w_delta_scale, utility(w-invest_cost, h, alpha)))
+                    new_wealth = min(int(compute_new_wealth(w-invest_cost, w_delta_scale, utility(w-invest_cost, h, alpha))), N)
                     # calculate utility changes for investment case
                     util_invest_success = utility(new_wealth, min(h+health_delta, N), alpha)
                     util_invest_fail = utility(new_wealth, h, alpha)
@@ -91,7 +91,7 @@ def value_iteration(
                     expected_future_val_invest = cpt_P_increase * val_success + cpt_P_increase_complement * val_fail
 
                 # compute value of NOT investing
-                new_wealth = int(compute_new_wealth(w, w_delta_scale, reference_utility))
+                new_wealth = min(int(compute_new_wealth(w, w_delta_scale, reference_utility)), N)
                 utility_save_decrease = utility(new_wealth, max(h-health_delta, 1), alpha)
                 utility_save_steady = utility(new_wealth, h, alpha)
 
@@ -176,6 +176,9 @@ def simulate(params, policy, num_steps, num_agents):
             np.maximum(h[no_invest_mask] - health_delta[no_invest_mask], 1),
             h[no_invest_mask]
         )
+
+        w = np.minimum(w, 200)
+        h = np.minimum(h, 200)
 
         # Update utility, wealth, and health
         wealth[:, step] = w
