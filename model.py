@@ -19,7 +19,7 @@ def compute_health_delta(h):
 def compute_health_cost(h):
     return - compute_health_delta(h) + 11
 
-def utility(w, h, alpha, rate=1.2):
+def utility(w, h, alpha, rate=1):
     return w**alpha * h**(rate - alpha)
 
 def value_iteration(

@@ -10,14 +10,14 @@ np.random.seed(23)
 
 def process_row(row, n_steps, n_agents, output_dir):
     # unpack model parameters
-    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale = row
+    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale, omega, eta = row
 
     # compute optimal policy
     policy, params, _ = value_iteration(
         N=200,
         theta=0.88,
-        omega=2.25,
-        eta=0.88,
+        omega=omega,
+        eta=eta,
         beta=0.95,
         alpha=alpha,
         P_H_decrease=prob_health_decrease,
@@ -41,7 +41,7 @@ def process_row(row, n_steps, n_agents, output_dir):
         "policy": policy
     }
 
-    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{w_delta_scale}.pickle")
+    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{w_delta_scale}_{omega}_{eta}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 
@@ -49,7 +49,7 @@ def process_row(row, n_steps, n_agents, output_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n-samples", type=int, default=512)
+    parser.add_argument("--n-samples", type=int, default=1024)
     parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=4000)
     parser.add_argument("--max-workers", type=int, default=4)
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    samples = generate_samples(N_SAMPLES, 5)
+    samples = generate_samples(N_SAMPLES, 7)
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
         for future in tqdm(as_completed(futures), total=len(futures)):
