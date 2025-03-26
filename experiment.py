@@ -51,7 +51,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-samples", type=int, default=1024)
     parser.add_argument("--n-agents", type=int, default=10000)
-    parser.add_argument("--n-steps", type=int, default=4000)
+    parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=4)
     parser.add_argument("--output-dir", type=str, default="results")
     args = parser.parse_args()
