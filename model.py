@@ -12,9 +12,9 @@ def compute_new_wealth(w, w_delta_scale, utility):
     delta = utility - w
     return w + w_delta_scale * delta
 
-def compute_health_delta(h):   
+def compute_health_delta(h):
     k = np.log(10) / 150
-    return (9 * np.exp(-k * h) + 1).astype(int)
+    return (10 * np.exp(-k * h) + 1).astype(int)
 
 def compute_health_cost(h):
     return - compute_health_delta(h) + 11
@@ -55,8 +55,9 @@ def value_iteration(
     cpt_P_increase_complement = probability_weighting(1 - P_H_increase, gamma)
     cpt_P_decrease = probability_weighting(P_H_decrease, gamma)
     cpt_P_decrease_complement = probability_weighting(1 - P_H_decrease, gamma)
-    
-    while True:
+
+    norm = np.inf
+    while norm > 1e-3:
         new_V = np.zeros((N,N))
         for i in range(N):
             for j in range(N):
@@ -119,8 +120,6 @@ def value_iteration(
                     policy[i][j] = 1 if invest > save else 0
 
         norm = np.linalg.norm(new_V-V)
-        if (len(norms) and norm > norms[-1]) or norm < 1e-3:
-            break
         norms.append(norm)
         V = new_V
 

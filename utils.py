@@ -42,7 +42,7 @@ def plot_policy_boundary(policy, params, colors=None, savepath=None):
     cmap = ListedColormap(colors)
 
     # Use imshow with origin='lower' to invert the y-axis
-    plt.imshow(policy, cmap=cmap, interpolation='nearest', origin='lower')
+    plt.imshow(policy.T, cmap=cmap, interpolation='nearest', origin='lower')
 
     # Create a color bar
     cbar = plt.colorbar(ticks=[0.25, 0.75])
@@ -53,8 +53,8 @@ def plot_policy_boundary(policy, params, colors=None, savepath=None):
     plt.yticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
 
     # Label the axes
-    plt.ylabel("Wealth")
-    plt.xlabel("Health")
+    plt.ylabel("Health")
+    plt.xlabel("Wealth")
 
     if savepath:
         plt.savefig(savepath, bbox_inches='tight')
