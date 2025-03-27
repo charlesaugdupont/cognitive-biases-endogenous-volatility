@@ -49,8 +49,8 @@ def plot_policy_boundary(policy, params, colors=None, savepath=None):
     cbar.ax.set_yticklabels(["Save", "Invest"])
 
     # Set the tick positions and labels
-    plt.xticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
-    plt.yticks(np.arange(0, params["N"]-1, 20), np.arange(0, params["N"]-1, 20))
+    plt.xticks(np.arange(0, params["N"]+1, 50))
+    plt.yticks(np.arange(0, params["N"]+1, 50))
 
     # Label the axes
     plt.ylabel("Health")
