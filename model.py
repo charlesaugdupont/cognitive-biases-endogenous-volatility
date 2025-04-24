@@ -71,7 +71,8 @@ def value_iteration(
                 weighted_fail = 0
                 expected_future_val_invest = 0
                 if w > invest_cost:
-                    new_wealth = min(int(compute_new_wealth(w-invest_cost, w_delta_scale, utility(w-invest_cost, h, alpha))), N)
+                    w_ = w - invest_cost
+                    new_wealth = min(int(compute_new_wealth(w_, w_delta_scale, utility(w_, h, alpha))), N)
                     # calculate utility changes for investment case
                     util_invest_success = utility(new_wealth, min(h+health_delta, N), alpha)
                     util_invest_fail = utility(new_wealth, h, alpha)
