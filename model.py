@@ -1,9 +1,13 @@
 import numpy as np
 from scipy.stats import genextreme
 
-def generate_shocks(num_samples):
-    samples_gev = genextreme.rvs(-0.3, loc=2, scale=0.5, size=num_samples)
+def generate_shocks_gev(num_samples):
+    # samples_gev = genextreme.rvs(-0.3, loc=2, scale=0.5, size=num_samples)
+    samples_gev = genextreme.rvs(-0.01, loc=2, scale=0.5, size=num_samples)
     return np.clip(samples_gev, 1, None)
+
+def generate_shocks_gauss(num_samples):
+    return np.random.normal(4, 0.5, size=num_samples)
 
 def probability_weighting(p, gamma):
     return (p**gamma) / ((p**gamma + (1-p)**gamma)**(1/gamma))
@@ -186,14 +190,15 @@ def simulate(params, policy, num_steps, num_agents):
         h = np.minimum(h, 200)
 
         # simulate shocks
-        shocks = generate_shocks(num_agents)
-        angles = np.random.uniform(np.pi, 3*np.pi/2, size=num_agents)
+        shocks = generate_shocks_gev(num_agents)
+        #angles = np.random.uniform(np.pi, 3*np.pi/2, size=num_agents)
+        angles = np.random.uniform(0, 2*np.pi, size=num_agents)
         dx = shocks * np.cos(angles)
         dy = shocks * np.sin(angles)
         w += dx.astype(int)
         h += dy.astype(int)
-        w = np.maximum(w, 1)
-        h = np.maximum(h, 1)
+        w = np.minimum(np.maximum(w, 1), 200)
+        h = np.minimum(np.maximum(h, 1), 200)
 
         # Update utility, wealth, and health
         wealth[:, step] = w
