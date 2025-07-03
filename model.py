@@ -7,7 +7,7 @@ def generate_shocks_gev(num_samples):
     return np.clip(samples_gev, 1, None)
 
 def generate_shocks_gauss(num_samples):
-    return np.random.normal(4, 0.5, size=num_samples)
+    return np.random.normal(2, 0.25, size=num_samples)
 
 def probability_weighting(p, gamma):
     return (p**gamma) / ((p**gamma + (1-p)**gamma)**(1/gamma))
@@ -190,7 +190,7 @@ def simulate(params, policy, num_steps, num_agents):
         h = np.minimum(h, 200)
 
         # simulate shocks
-        shocks = generate_shocks_gev(num_agents)
+        shocks = generate_shocks_gauss(num_agents)
         #angles = np.random.uniform(np.pi, 3*np.pi/2, size=num_agents)
         angles = np.random.uniform(0, 2*np.pi, size=num_agents)
         dx = shocks * np.cos(angles)

@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=1)
-    parser.add_argument("--output-dir", type=str, default="results_shocks_4")
+    parser.add_argument("--output-dir", type=str, default="results_shocks_5")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples
