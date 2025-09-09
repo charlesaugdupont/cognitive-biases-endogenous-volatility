@@ -31,7 +31,7 @@ def value_iteration(
     eta,
     beta,
     P_H_increase,
-    w_delta_scale,
+    w_delta_scale_grid,
     P_H_decrease
 ):
     V = np.zeros((N,N))
@@ -47,7 +47,7 @@ def value_iteration(
         "eta":eta,
         "beta":beta,
         "P_H_increase":P_H_increase,
-        "w_delta_scale":w_delta_scale,
+        "w_delta_scale_grid":w_delta_scale_grid,
         "P_H_decrease":P_H_decrease,
     }
 
@@ -62,6 +62,7 @@ def value_iteration(
         for i in range(N):
             for j in range(N):
                 w, h = i+1, j+1 # w and h range from 1, 2, ..., to N inclusive
+                current_w_delta_scale = w_delta_scale_grid[j, i]
                 reference_utility = utility(w, h, alpha)
                 invest_cost = compute_health_cost(h)
                 health_delta = compute_health_delta(h)
@@ -72,7 +73,9 @@ def value_iteration(
                 expected_future_val_invest = 0
                 if w > invest_cost:
                     w_ = w - invest_cost
-                    new_wealth = min(N, int(max(1,compute_new_wealth(w_, w_delta_scale, utility(w_, h, alpha)))))
+                    new_wealth = int(compute_new_wealth(w_, current_w_delta_scale, utility(w_, h, alpha)))
+                    if new_wealth > N:
+                        print(w_, h, alpha, current_w_delta_scale)
                     # calculate utility changes for investment case
                     util_invest_success = utility(new_wealth, min(h+health_delta, N), alpha)
                     util_invest_fail = utility(new_wealth, h, alpha)
@@ -93,7 +96,9 @@ def value_iteration(
                     expected_future_val_invest = cpt_P_increase * val_success + cpt_P_increase_complement * val_fail
 
                 # compute value of NOT investing
-                new_wealth = min(N, int(max(1, compute_new_wealth(w, w_delta_scale, reference_utility))))
+                new_wealth = int(compute_new_wealth(w, current_w_delta_scale, reference_utility))
+                if new_wealth > N:
+                    print(w, h, alpha, current_w_delta_scale)
                 utility_save_decrease = utility(new_wealth, max(h-health_delta, 1), alpha)
                 utility_save_steady = utility(new_wealth, h, alpha)
 
@@ -128,7 +133,7 @@ def value_iteration(
 
 def simulate(params, policy, num_steps, num_agents):
     N = params["N"]
-    w_delta_scale = params["w_delta_scale"]
+    w_delta_scale_grid = params["w_delta_scale_grid"]
     P_H_increase = params["P_H_increase"]
     P_H_decrease = params["P_H_decrease"]
 
@@ -149,16 +154,20 @@ def simulate(params, policy, num_steps, num_agents):
         invest_cost = compute_health_cost(h)
         health_delta = compute_health_delta(h)
 
+        current_w_delta_scales = w_delta_scale_grid[h-1, w-1]
+
         # Apply actions
         invest_mask = (action == 1) & (w > invest_cost)
         no_invest_mask = (action == 0) | (w <= invest_cost)
 
         # Invest action
-        w[invest_mask] = np.maximum(1, compute_new_wealth(
-            w[invest_mask] - invest_cost[invest_mask],
-            w_delta_scale,
-            utility(w[invest_mask] - invest_cost[invest_mask], h[invest_mask], params["alpha"])
-        ))
+        w_after_cost = w[invest_mask] - invest_cost[invest_mask]
+        updated_w = compute_new_wealth(
+            w_after_cost,
+            current_w_delta_scales[invest_mask], # Pass the specific scales
+            utility(w_after_cost, h[invest_mask], params["alpha"])
+        )
+        w[invest_mask] = updated_w
         h[invest_mask] = np.where(
             rng[invest_mask, step-1] < P_H_increase,
             np.minimum(h[invest_mask] + health_delta[invest_mask], N),
@@ -166,18 +175,19 @@ def simulate(params, policy, num_steps, num_agents):
         )
 
         # No invest action
-        w[no_invest_mask] = np.maximum(1, compute_new_wealth(
+        updated_w_no_invest = compute_new_wealth(
             w[no_invest_mask],
-            w_delta_scale,
+            current_w_delta_scales[no_invest_mask], # Pass the specific scales
             utility(w[no_invest_mask], h[no_invest_mask], params["alpha"])
-        ))
+        )
+        w[no_invest_mask] = updated_w_no_invest
         h[no_invest_mask] = np.where(
             rng[no_invest_mask, step-1] < P_H_decrease,
             np.maximum(h[no_invest_mask] - health_delta[no_invest_mask], 1),
             h[no_invest_mask]
         )
 
-        w = np.minimum(w, 200)
+        # w = np.minimum(w, 200)
         h = np.minimum(h, 200)
 
         # Update utility, wealth, and health

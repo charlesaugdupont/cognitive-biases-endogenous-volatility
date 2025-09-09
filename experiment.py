@@ -10,11 +10,26 @@ np.random.seed(23)
 
 def process_row(row, n_steps, n_agents, output_dir):
     # unpack model parameters
-    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale, omega, eta = row
+    alpha, prob_health_decrease, prob_health_increase, gamma, omega, eta = row
+
+    N = 200
+    x = np.linspace(1, N, N)
+    y = np.linspace(1, N, N)
+    X, Y = np.meshgrid(x, y)
+    mu = 100               # center of diagonal
+    sigma_perp = 30        # controls decay perpendicular to diagonal
+    sigma_diag = 30        # controls decay along diagonal
+    dist_perp = (Y - X)
+    dist_diag = (X + Y)/2 - mu
+    decay_perp = np.exp(-(dist_perp**2) / (2*sigma_perp**2))
+    decay_diag = np.exp(-(dist_diag**2) / (2*sigma_diag**2))
+    magnitude = decay_perp * decay_diag
+    w_delta_scale_grid = np.where(Y >= X, magnitude, -magnitude)
+
 
     # compute optimal policy
     policy, params, _ = value_iteration(
-        N=200,
+        N=N,
         theta=0.88,
         omega=omega,
         eta=eta,
@@ -23,7 +38,7 @@ def process_row(row, n_steps, n_agents, output_dir):
         P_H_decrease=prob_health_decrease,
         P_H_increase=prob_health_increase,
         gamma=gamma,
-        w_delta_scale=w_delta_scale
+        w_delta_scale_grid=w_delta_scale_grid # Pass the grid here
     )
 
     # run agent simulation
@@ -41,7 +56,7 @@ def process_row(row, n_steps, n_agents, output_dir):
         "policy": policy
     }
 
-    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{w_delta_scale}_{omega}_{eta}.pickle")
+    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{omega}_{eta}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 
@@ -49,11 +64,11 @@ def process_row(row, n_steps, n_agents, output_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n-samples", type=int, default=64)
-    parser.add_argument("--n-agents", type=int, default=5000)
+    parser.add_argument("--n-samples", type=int, default=1024)
+    parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
-    parser.add_argument("--max-workers", type=int, default=4)
-    parser.add_argument("--output-dir", type=str, default="low_health_high_wealth")
+    parser.add_argument("--max-workers", type=int, default=6)
+    parser.add_argument("--output-dir", type=str, default="bivariate_growth_rate_full")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples
@@ -65,7 +80,7 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    samples = generate_samples(N_SAMPLES, 7)
+    samples = generate_samples(N_SAMPLES, 6)
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
         for future in tqdm(as_completed(futures), total=len(futures)):
