@@ -49,11 +49,11 @@ def process_row(row, n_steps, n_agents, output_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n-samples", type=int, default=1024)
-    parser.add_argument("--n-agents", type=int, default=10000)
+    parser.add_argument("--n-samples", type=int, default=64)
+    parser.add_argument("--n-agents", type=int, default=5000)
     parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=4)
-    parser.add_argument("--output-dir", type=str, default="results")
+    parser.add_argument("--output-dir", type=str, default="low_health_high_wealth")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples

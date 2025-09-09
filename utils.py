@@ -12,6 +12,7 @@ def generate_samples(num_samples, num_params):
     lh = LatinHypercube(d=num_params)
     sample = lh.random(n=num_samples)
     sample[:,3] = 0.4 + sample[:,3] * (0.8 - 0.4)       # gamma from 0.4 to 0.8
+    sample[:,4] = sample[:,4] - 1                       # w_delta_scale from -1 to 0
     sample[:,5] = 1 + sample[:,5] * (4 - 1)             # omega from 1 to 4
     sample[:,6] = 0.5 + sample[:,6] * (1 - 0.5)         # eta from 0.5 to 1
     return sample
