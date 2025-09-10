@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from model import *
 
-def generate_samples(num_samples, num_params):
-    lh = LatinHypercube(d=num_params)
+def generate_samples(num_samples, num_params, seed):
+    lh = LatinHypercube(d=num_params, seed=seed)
     sample = lh.random(n=num_samples)
-    sample[:,0] = 0.1 + sample[:,0] * (0.6 - 0.1)         # alpha from 0.1 to 0.6
+    sample[:,0] = 0.1 + sample[:,0] * (0.6 - 0.1)       # alpha from 0.1 to 0.6
     sample[:,3] = 0.4 + sample[:,3] * (0.8 - 0.4)       # gamma from 0.4 to 0.8
     sample[:,4] = 1 + sample[:,5] * (4 - 1)             # omega from 1 to 4
     sample[:,5] = 0.5 + sample[:,5] * (1 - 0.5)         # eta from 0.5 to 1

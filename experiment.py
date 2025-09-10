@@ -4,9 +4,12 @@ from tqdm.auto import tqdm
 from model import *
 import argparse
 import pickle
+import random
 import os
 
-np.random.seed(23)
+SEED = 23
+np.random.seed(SEED)
+random.seed(SEED)
 
 def process_row(row, n_steps, n_agents, output_dir):
     # unpack model parameters
@@ -41,26 +44,28 @@ def process_row(row, n_steps, n_agents, output_dir):
         w_delta_scale_grid=w_delta_scale_grid # Pass the grid here
     )
 
-    # run agent simulation
-    wealth, health = simulate(
-        params,
-        policy,
-        n_steps,
-        n_agents
-    )
-
-    result = {
-        "params": params,
-        "wealth": wealth,
-        "health": health,
-        "policy": policy
-    }
-
     output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{omega}_{eta}.pickle")
-    with open(output_file_name, 'wb') as f:
-        pickle.dump(result, f)
 
-    return output_file_name
+    if not os.path.exists(output_file_name):
+        # run agent simulation
+        wealth, health = simulate(
+            params,
+            policy,
+            n_steps,
+            n_agents
+        )
+
+        result = {
+            "params": params,
+            "wealth": wealth,
+            "health": health,
+            "policy": policy
+        }
+
+        with open(output_file_name, 'wb') as f:
+            pickle.dump(result, f)
+
+        return output_file_name
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -68,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=6)
-    parser.add_argument("--output-dir", type=str, default="bivariate_growth_rate_full")
+    parser.add_argument("--output-dir", type=str, default="state_dependent_growth_rate_full")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples
@@ -80,7 +85,7 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    samples = generate_samples(N_SAMPLES, 6)
+    samples = generate_samples(N_SAMPLES, 6, seed=SEED)
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
         for future in tqdm(as_completed(futures), total=len(futures)):
