@@ -52,8 +52,8 @@ if __name__ == "__main__":
     parser.add_argument("--n-samples", type=int, default=1024)
     parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
-    parser.add_argument("--max-workers", type=int, default=4)
-    parser.add_argument("--output-dir", type=str, default="results")
+    parser.add_argument("--max-workers", type=int, default=6)
+    parser.add_argument("--output-dir", type=str, default="cpt_no_effect")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples
@@ -65,7 +65,11 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    samples = generate_samples(N_SAMPLES, 7)
+    with open("parameter_combinations.pickle", "rb") as f:
+        parmameter_combinations = pickle.load(f)
+
+    samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], p["w_delta_scale"]) for p in parmameter_combinations]
+
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
         for future in tqdm(as_completed(futures), total=len(futures)):
