@@ -18,4 +18,6 @@ dependencies = [
     "tqdm>=4.67.0",
     "trajpy>=1.4.3",
     "tslearn>=0.6.4",
+    "umap>=0.1.1",
+    "umap-learn>=0.5.7",
 ]
