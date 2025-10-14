@@ -10,19 +10,19 @@ np.random.seed(23)
 
 def process_row(row, n_steps, n_agents, output_dir):
     # unpack model parameters
-    alpha, prob_health_decrease, prob_health_increase, w_delta_scale = row
+    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale, omega, eta = row
 
     # compute optimal policy
     policy, params, _ = value_iteration_vectorized(
         N=200,
-        theta=1,
-        omega=1,
-        eta=1,
+        theta=0.88,
+        omega=omega,
+        eta=eta,
         beta=0.95,
         alpha=alpha,
         P_H_decrease=prob_health_decrease,
         P_H_increase=prob_health_increase,
-        gamma=1,
+        gamma=gamma,
         w_delta_scale=w_delta_scale
     )
 
@@ -41,7 +41,7 @@ def process_row(row, n_steps, n_agents, output_dir):
         "policy": policy
     }
 
-    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{w_delta_scale}.pickle")
+    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{w_delta_scale}_{omega}_{eta}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=6)
-    parser.add_argument("--output-dir", type=str, default="nocpt")
+    parser.add_argument("--output-dir", type=str, default="cpt")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples
@@ -68,7 +68,12 @@ if __name__ == "__main__":
     with open("parameter_combinations.pickle", "rb") as f:
         parmameter_combinations = pickle.load(f)
 
-    samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], p["w_delta_scale"]) for p in parmameter_combinations]
+    CPT = True
+
+    if CPT:
+        samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], p["gamma"], p["w_delta_scale"], p["omega"], p["eta"]) for p in parmameter_combinations]
+    else:
+        samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], 1, p["w_delta_scale"], 1, 1) for p in parmameter_combinations]
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]

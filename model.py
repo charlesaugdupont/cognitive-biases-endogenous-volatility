@@ -11,7 +11,12 @@ def probability_weighting(p, gamma):
 #     return -omega * (-x)**eta
 
 def cpt_value(x, theta, omega, eta):
-    return np.where(x >= 0, x**theta, -omega * (-x)**eta)
+    v = np.empty_like(x, dtype=float)
+    pos_mask = x >= 0
+    neg_mask = x < 0
+    v[pos_mask] = x[pos_mask] ** theta
+    v[neg_mask] = -omega * (-x[neg_mask]) ** eta
+    return v
 
 def compute_new_wealth(w, w_delta_scale, utility):
     delta = utility - w
