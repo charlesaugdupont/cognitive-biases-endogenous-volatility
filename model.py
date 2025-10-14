@@ -166,22 +166,22 @@ def value_iteration_vectorized(
     w_vals, h_vals = np.arange(1, N + 1), np.arange(1, N + 1)
     W, H = np.meshgrid(w_vals, h_vals, indexing='ij')
 
-    Reference_utility = utility(W, H, alpha)
-    Health_delta = compute_health_delta(H)
-    Invest_cost = compute_health_cost(H)
+    reference_utility = utility(W, H, alpha)
+    health_delta = compute_health_delta(H)
+    invest_cost = compute_health_cost(H)
 
     # This mask is key to preventing calculations on invalid states
-    invest_possible_mask = W > Invest_cost
+    invest_possible_mask = W > invest_cost
 
     norm = np.inf
     while norm > 1e-3:
         # --- Save Action Value Calculation (Vectorized) ---
         # This is safe to compute for all states
-        new_wealth_save = np.minimum(compute_new_wealth(W, w_delta_scale, Reference_utility), N)
-        H_decrease = np.maximum(H - Health_delta, 1)
+        new_wealth_save = np.minimum(compute_new_wealth(W, w_delta_scale, reference_utility), N)
+        H_decrease = np.maximum(H - health_delta, 1)
 
-        delta_util_decrease = utility(new_wealth_save, H_decrease, alpha) - Reference_utility
-        delta_util_steady = utility(new_wealth_save, H, alpha) - Reference_utility
+        delta_util_decrease = utility(new_wealth_save, H_decrease, alpha) - reference_utility
+        delta_util_steady = utility(new_wealth_save, H, alpha) - reference_utility
         cpt_delta_decrease = cpt_value(delta_util_decrease, theta, omega, eta)
         cpt_delta_steady = cpt_value(delta_util_steady, theta, omega, eta)
         immediate_cpt_save = (cpt_P_decrease * cpt_delta_decrease +
@@ -205,18 +205,18 @@ def value_iteration_vectorized(
         if np.any(invest_possible_mask):
             W_invest = W[invest_possible_mask]
             H_invest = H[invest_possible_mask]
-            Invest_cost_invest = Invest_cost[invest_possible_mask]
-            Reference_utility_invest = Reference_utility[invest_possible_mask]
-            Health_delta_invest = Health_delta[invest_possible_mask]
+            invest_cost_invest = invest_cost[invest_possible_mask]
+            reference_utility_invest = reference_utility[invest_possible_mask]
+            health_delta_invest = health_delta[invest_possible_mask]
 
-            W_after_cost = W_invest - Invest_cost_invest
+            W_after_cost = W_invest - invest_cost_invest
             New_wealth_invest = np.minimum(compute_new_wealth(
                 W_after_cost, w_delta_scale, utility(W_after_cost, H_invest, alpha)
             ), N)
 
-            H_success = np.minimum(H_invest + Health_delta_invest, N)
-            delta_util_success = utility(New_wealth_invest, H_success, alpha) - Reference_utility_invest
-            delta_util_fail = utility(New_wealth_invest, H_invest, alpha) - Reference_utility_invest
+            H_success = np.minimum(H_invest + health_delta_invest, N)
+            delta_util_success = utility(New_wealth_invest, H_success, alpha) - reference_utility_invest
+            delta_util_fail = utility(New_wealth_invest, H_invest, alpha) - reference_utility_invest
             cpt_delta_success = cpt_value(delta_util_success, theta, omega, eta)
             cpt_delta_fail = cpt_value(delta_util_fail, theta, omega, eta)
             immediate_cpt_invest = (cpt_P_increase * cpt_delta_success +
