@@ -13,7 +13,7 @@ def process_row(row, n_steps, n_agents, output_dir):
     alpha, prob_health_decrease, prob_health_increase, w_delta_scale = row
 
     # compute optimal policy
-    policy, params, _ = value_iteration(
+    policy, params, _ = value_iteration_vectorized(
         N=200,
         theta=1,
         omega=1,
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=6)
-    parser.add_argument("--output-dir", type=str, default="cpt_no_effect")
+    parser.add_argument("--output-dir", type=str, default="nocpt")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples
