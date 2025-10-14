@@ -6,7 +6,7 @@ from multiprocessing import Pool
 from model import utility
 from scipy.signal import detrend
 
-directory = "results_5"
+directory = "nocpt"
 file_list = os.listdir(directory)
 
 def process_file_robust(f_name, power_threshold_ratio=0.1, discard_steps=3000, std_threshold=5):
