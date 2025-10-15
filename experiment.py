@@ -1,26 +1,31 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from utils import generate_initial_agent_states
 from tqdm.auto import tqdm
 from model import *
 import argparse
 import pickle
+import random
 import os
 
-np.random.seed(23)
-
-with open("lhs_init_sample.pickle", "rb") as f:
-    initial_states = pickle.load(f)
+# constants
+GRID_SIZE = 200
+THETA = 0.88
+BETA = 0.95
+SEED = 23
+np.random.seed(SEED)
+random.seed(SEED)
 
 def process_row(row, n_steps, n_agents, output_dir):
     # unpack model parameters
-    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale, omega, eta = row
+    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale, omega, eta, initial_states = row
 
     # compute optimal policy
     policy, params, _ = value_iteration_vectorized(
-        N=200,
-        theta=0.88,
+        N=GRID_SIZE,
+        theta=THETA,
         omega=omega,
         eta=eta,
-        beta=0.95,
+        beta=BETA,
         alpha=alpha,
         P_H_decrease=prob_health_decrease,
         P_H_increase=prob_health_increase,
@@ -68,13 +73,15 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
+    initial_states = generate_initial_agent_states(num_agents=N_AGENTS, N=GRID_SIZE, seed=SEED)
+
     with open("parameter_combinations.pickle", "rb") as f:
         parmameter_combinations = pickle.load(f)
 
     if OUTPUT_DIR == "cpt":
-        samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], p["gamma"], p["w_delta_scale"], p["omega"], p["eta"]) for p in parmameter_combinations]
+        samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], p["gamma"], p["w_delta_scale"], p["omega"], p["eta"], initial_states) for p in parmameter_combinations]
     else:
-        samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], 1, p["w_delta_scale"], 1, 1) for p in parmameter_combinations]
+        samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], 1, p["w_delta_scale"], 1, 1, initial_states) for p in parmameter_combinations]
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
