@@ -41,7 +41,7 @@ def value_iteration_vectorized(
     P_H_decrease
 ):
     V = np.zeros((N, N))
-    policy = np.zeros((N, N), dtype=np.int8)
+    policy = np.zeros((N, N), dtype=np.int16)
     norms = []
 
     parameters = {
@@ -127,7 +127,7 @@ def value_iteration_vectorized(
 
         # --- Policy and Value Update (Vectorized) ---
         new_V = np.maximum(invest_value, save_value)
-        policy = (invest_value > save_value).astype(np.int8)
+        policy = (invest_value > save_value).astype(np.int16)
 
         norm = np.linalg.norm(new_V - V)
         norms.append(norm)
@@ -142,8 +142,8 @@ def simulate(params, policy, num_steps, num_agents, initial_states):
     P_H_decrease = params["P_H_decrease"]
     alpha = params["alpha"]
 
-    wealth = np.zeros((num_agents, num_steps), dtype=np.uint8)
-    health = np.zeros((num_agents, num_steps), dtype=np.uint8)
+    wealth = np.zeros((num_agents, num_steps), dtype=np.int16)
+    health = np.zeros((num_agents, num_steps), dtype=np.int16)
     rng = np.random.uniform(0, 1, size=(num_agents, num_steps-1))
 
     wealth[:,0] = initial_states[:,0]
@@ -192,4 +192,6 @@ def simulate(params, policy, num_steps, num_agents, initial_states):
         wealth[:, step] = np.clip(w, 1, N)
         health[:, step] = np.clip(h, 1, N)
 
+    assert np.all((wealth >= 1) & (wealth <= N)), f"Wealth out of bounds: min={wealth.min()}, max={wealth.max()}"
+    assert np.all((health >= 1) & (health <= N)), f"Health out of bounds: min={health.min()}, max={health.max()}"
     return wealth, health

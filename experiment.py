@@ -44,9 +44,9 @@ def process_row(row, n_steps, n_agents, output_dir):
 
     result = {
         "params": params,
-        "wealth": wealth,
-        "health": health,
-        "policy": policy
+        "wealth": wealth.astype(np.uint8),
+        "health": health.astype(np.uint8),
+        "policy": policy.astype(np.uint8)
     }
 
     output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{w_delta_scale}_{omega}_{eta}.pickle")
