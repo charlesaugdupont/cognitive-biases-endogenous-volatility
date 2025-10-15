@@ -1,5 +1,4 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from utils import generate_samples
 from tqdm.auto import tqdm
 from model import *
 import argparse
@@ -7,6 +6,9 @@ import pickle
 import os
 
 np.random.seed(23)
+
+with open("lhs_init_sample.pickle", "rb") as f:
+    initial_states = pickle.load(f)
 
 def process_row(row, n_steps, n_agents, output_dir):
     # unpack model parameters
@@ -31,7 +33,8 @@ def process_row(row, n_steps, n_agents, output_dir):
         params,
         policy,
         n_steps,
-        n_agents
+        n_agents,
+        initial_states
     )
 
     result = {
@@ -68,9 +71,7 @@ if __name__ == "__main__":
     with open("parameter_combinations.pickle", "rb") as f:
         parmameter_combinations = pickle.load(f)
 
-    CPT = True
-
-    if CPT:
+    if OUTPUT_DIR == "cpt":
         samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], p["gamma"], p["w_delta_scale"], p["omega"], p["eta"]) for p in parmameter_combinations]
     else:
         samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], 1, p["w_delta_scale"], 1, 1) for p in parmameter_combinations]

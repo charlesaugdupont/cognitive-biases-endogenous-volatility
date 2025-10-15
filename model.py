@@ -243,7 +243,7 @@ def value_iteration_vectorized(
 
     return policy, parameters, V
 
-def simulate(params, policy, num_steps, num_agents):
+def simulate(params, policy, num_steps, num_agents, initial_states):
     N = params["N"]
     w_delta_scale = params["w_delta_scale"]
     P_H_increase = params["P_H_increase"]
@@ -253,23 +253,12 @@ def simulate(params, policy, num_steps, num_agents):
     health = np.zeros((num_agents, num_steps), dtype=np.uint8)
     rng = np.random.uniform(0, 1, size=(num_agents, num_steps-1))
 
-    # Initialize wealth and health for all agents using LHS
-    l_bounds = [1,1]
-    u_bounds = [N,N]
-    sampler = qmc.LatinHypercube(d=2)
-    sample = sampler.random(n=num_agents)
-
-    # Scale the sample from [0, 1) to our desired integer range [1, N].
-    scaled_sample = qmc.scale(sample, l_bounds, u_bounds)
-
-    # Convert the scaled floating-point values to integers.
-    initial_states = np.round(scaled_sample)
     wealth[:, 0] = initial_states[:, 0]
     health[:, 0] = initial_states[:, 1]
 
     for step in range(1, num_steps):
-        w = wealth[:, step-1]
-        h = health[:, step-1]
+        w = wealth[:, step-1].copy()
+        h = health[:, step-1].copy()
         action = policy[w-1, h-1]
         invest_cost = compute_health_cost(h)
         health_delta = compute_health_delta(h)
