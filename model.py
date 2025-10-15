@@ -1,13 +1,8 @@
 import numpy as np
 
 def probability_weighting(p, gamma):
-    p = np.clip(p, 1e-10, 1 - 1e-10)  # Avoid division by zero
+    p = np.clip(p, 1e-10, 1 - 1e-10) # Avoid division by zero
     return (p**gamma) / ((p**gamma + (1-p)**gamma)**(1/gamma))
-
-# def cpt_value(x, theta, omega, eta):
-#     if x >= 0:
-#         return x**theta
-#     return -omega * (-x)**eta
 
 def cpt_value(x, theta, omega, eta):
     v = np.empty_like(x, dtype=float)

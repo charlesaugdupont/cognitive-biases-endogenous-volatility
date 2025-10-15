@@ -61,14 +61,14 @@ if __name__ == "__main__":
     parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=6)
-    parser.add_argument("--output-dir", type=str, default="cpt")
+    parser.add_argument("--model", type=str, default="cpt")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples
     N_AGENTS = args.n_agents
     N_STEPS = args.n_steps
     MAX_WORKERS = args.max_workers
-    OUTPUT_DIR = args.output_dir
+    OUTPUT_DIR = args.model
 
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
@@ -80,8 +80,10 @@ if __name__ == "__main__":
 
     if OUTPUT_DIR == "cpt":
         samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], p["gamma"], p["w_delta_scale"], p["omega"], p["eta"], initial_states) for p in parmameter_combinations]
-    else:
+    elif OUTPUT_DIR == "nocpt":
         samples = [(p["alpha"], p["P_H_decrease"], p["P_H_increase"], 1, p["w_delta_scale"], 1, 1, initial_states) for p in parmameter_combinations]
+    else:
+        raise Exception("Invalid model.")
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
