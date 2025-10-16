@@ -6,10 +6,10 @@ from multiprocessing import Pool
 from model import utility
 from scipy.signal import detrend
 
-directory = "nocpt"
+directory = "cpt"
 file_list = os.listdir(directory)
 
-def process_file_robust(f_name, power_threshold_ratio=0.1, discard_steps=3000, std_threshold=5):
+def process_file_robust(f_name, power_threshold_ratio=0.20, discard_steps=3000, trivial_range_threshold=30):
     """
     Load a file, compute utility, and return dominant frequencies
     using a robust method with windowing and power thresholding.
@@ -17,13 +17,14 @@ def process_file_robust(f_name, power_threshold_ratio=0.1, discard_steps=3000, s
     with open(os.path.join(directory, f_name), "rb") as f:
         res = pickle.load(f)
 
-    w = res["wealth"][:,discard_steps:]
-    h = res["health"][:,discard_steps:]
+    w = res["wealth"][:,discard_steps:].astype(np.int16)
+    h = res["health"][:,discard_steps:].astype(np.int16)
     u = utility(w, h, res["params"]["alpha"])
-
-    w_std = np.std(w[:,-100:], axis=1)
-    h_std = np.std(h[:,-100:], axis=1)
-    is_trivial = (w_std < std_threshold) | (h_std < std_threshold)
+    
+    # threshold absed on utility range during steady state
+    u_last = u[:,-500:]
+    u_range = np.max(u_last, axis=1) - np.min(u_last, axis=1)
+    is_trivial = u_range < trivial_range_threshold
 
     dominant_frequencies = np.full(w.shape[0], np.nan)
     is_significant = ~is_trivial
