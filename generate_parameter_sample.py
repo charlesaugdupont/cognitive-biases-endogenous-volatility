@@ -36,9 +36,9 @@ if __name__ == "__main__":
         else:
             scaled_samples[:, i] = samples[:, i] * (high - low) + low
 
-    save_path = f"{MODEL}_samples_1.pickle"
+    save_path = f"{MODEL}_samples.pickle"
     with open(save_path, "wb") as f:
         pickle.dump(scaled_samples, f)
 
-    print(f"\nSuccesfully generated parameter sample with shape {scaled_samples.shape} for {MODEL} model.")
-    print(f"Results saved to: {save_path}.")
+    print(f"\nSuccesfully generated parameter sample with shape {scaled_samples.shape} for {MODEL} model")
+    print(f"Results saved to: {save_path}")

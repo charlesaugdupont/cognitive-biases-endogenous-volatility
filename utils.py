@@ -12,13 +12,6 @@ def generate_samples(num_samples, num_params, seed):
     sample = lh.random(n=num_samples)
     return sample
 
-def generate_initial_agent_states(num_agents, N, seed):
-    lh = LatinHypercube(d=2, seed=seed)
-    sample = lh.random(n=2*num_agents)
-    sample = (sample * 200).astype(int) + 1
-    unique = {(x[0],x[1]) for x in sample}
-    return np.array([(x[0],x[1]) for x in unique])[:num_agents]
-
 def plot_utility_transition(util, num_steps):
     fig, axs = plt.subplots(1, 5, figsize=(15,3))
     for k, step in enumerate([10, 50, 100, 500, num_steps]):

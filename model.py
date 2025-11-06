@@ -61,12 +61,12 @@ def probability_weighting(p, gamma):
     p = np.clip(p, 1e-10, 1 - 1e-10)
     return (p**gamma) / ((p**gamma + (1-p)**gamma)**(1/gamma))
 
-def cpt_value(x, theta, omega, eta):
+def cpt_value(x, theta, lambduh, eta):
     v = np.empty_like(x, dtype=float)
     pos_mask = x >= 0
     neg_mask = x < 0
     v[pos_mask] = x[pos_mask] ** theta
-    v[neg_mask] = -omega * (-x[neg_mask]) ** eta
+    v[neg_mask] = -lambduh * (-x[neg_mask]) ** eta
     return v
 
 def compute_health_cost(h, N, rate, Cmin=1, Cmax=10):
@@ -98,23 +98,31 @@ def value_iteration_vectorized(
     N,
     alpha,
     gamma,
-    theta,
-    omega,
+    lambduh,
     eta,
-    beta,
     P_H_increase,
     P_H_decrease,
-    rate
+    rate,
+    theta,
+    beta
 ):
     """
-    Uses interpolation for value lookups.
-    The value function V is still a discrete grid, but we can now evaluate the
-    expected future value of any continuous (w,h) state, leading to a smoother
-    and more accurate policy.
+    Perform value iteration with interpolation to compute optimal policy.
     """
     V = np.zeros((N, N))
     policy = np.zeros((N, N), dtype=np.int16)
-    parameters = {"N": N, "alpha": alpha, "gamma": gamma, "theta": theta, "omega": omega, "eta": eta, "beta": beta, "P_H_increase": P_H_increase, "P_H_decrease": P_H_decrease, "rate": rate}
+    parameters = {
+        "N": N,
+        "alpha": alpha,
+        "gamma": gamma,
+        "lambda": lambduh,
+        "eta": eta,
+        "P_H_increase": P_H_increase,
+        "P_H_decrease": P_H_decrease,
+        "rate": rate,
+        "theta": theta,
+        "beta": beta,
+    }
 
     cpt_P_increase = probability_weighting(P_H_increase, gamma)
     cpt_P_increase_complement = probability_weighting(1 - P_H_increase, gamma)
@@ -139,8 +147,8 @@ def value_iteration_vectorized(
 
         delta_util_decrease = utility(new_wealth_save_float, H_decrease_float, alpha) - reference_utility
         delta_util_steady = utility(new_wealth_save_float, H, alpha) - reference_utility
-        immediate_cpt_save = (cpt_P_decrease * cpt_value(delta_util_decrease, theta, omega, eta) +
-                              cpt_P_decrease_complement * cpt_value(delta_util_steady, theta, omega, eta))
+        immediate_cpt_save = (cpt_P_decrease * cpt_value(delta_util_decrease, theta, lambduh, eta) +
+                              cpt_P_decrease_complement * cpt_value(delta_util_steady, theta, lambduh, eta))
 
         # Use interpolation to get the expected future value
         val_decrease = interpolate_value(new_wealth_save_float.ravel(), H_decrease_float.ravel(), V).reshape(N, N)
@@ -161,8 +169,8 @@ def value_iteration_vectorized(
 
             delta_util_success = utility(new_wealth_invest_float, H_success_float, alpha) - reference_utility[invest_possible_mask]
             delta_util_fail = utility(new_wealth_invest_float, H_invest, alpha) - reference_utility[invest_possible_mask]
-            immediate_cpt_invest = (cpt_P_increase * cpt_value(delta_util_success, theta, omega, eta) +
-                                    cpt_P_increase_complement * cpt_value(delta_util_fail, theta, omega, eta))
+            immediate_cpt_invest = (cpt_P_increase * cpt_value(delta_util_success, theta, lambduh, eta) +
+                                    cpt_P_increase_complement * cpt_value(delta_util_fail, theta, lambduh, eta))
 
             # Use interpolation for the masked subset of states
             val_success = interpolate_value(new_wealth_invest_float, H_success_float, V)
@@ -176,9 +184,9 @@ def value_iteration_vectorized(
         norm = np.linalg.norm(new_V - V)
         V = new_V
 
-    return policy, parameters, V
+    return policy, parameters
 
-def simulate(params, policy, num_steps, num_agents, initial_states):
+def simulate(params, policy, num_steps, initial_states):
     """
     MODIFIED: Agent wealth and health are now continuous floats.
     The simulation evolves the agent's state in continuous space. To decide
@@ -186,6 +194,7 @@ def simulate(params, policy, num_steps, num_agents, initial_states):
     pre-computed optimal policy from that point.
     """
     N, P_H_increase, P_H_decrease, alpha, rate = params["N"], params["w_delta_scale"], params["P_H_increase"], params["P_H_decrease"], params["alpha"], params["rate"]
+    num_agents = initial_states.shape[0]
 
     # Agent state is now stored as float
     wealth = np.zeros((num_agents, num_steps), dtype=np.float32)
