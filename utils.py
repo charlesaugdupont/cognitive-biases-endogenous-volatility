@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from model import *
 
-def generate_samples(num_samples, num_params):
-    lh = LatinHypercube(d=num_params)
+def generate_samples(num_samples, num_params, seed):
+    lh = LatinHypercube(d=num_params, seed=seed)
     sample = lh.random(n=num_samples)
     return sample
 
