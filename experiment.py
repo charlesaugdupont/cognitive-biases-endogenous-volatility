@@ -111,7 +111,7 @@ if __name__ == "__main__":
     # load parameter samples
     samples_path = f"{MODEL}_samples.pickle"
     if not os.path.exists(samples_path):
-        raise Exception("Please a sample of parameter values with: uv run generate_parameter_sample.py [--n-samples] [--model] [--seed]")
+        raise Exception(f"Please a sample of parameter values with: uv run generate_parameter_sample.py --model {MODEL} [--n-samples]  [--seed]")
     with open(samples_path, "rb") as f:
         samples = pickle.load(f)
 
