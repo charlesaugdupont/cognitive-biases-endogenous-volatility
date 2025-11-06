@@ -21,7 +21,7 @@ def quantize_and_pack(data: np.ndarray, grid_size: int, dtype=np.uint16):
 
     Args:
         data (np.ndarray): The floating-point array to convert.
-        grid_size (int): The maximum value of the original range (e.g., 200).
+        grid_size (int): The maximum value of the original range.
         dtype: The target integer type (e.g., np.uint8 or np.uint16).
 
     Returns:
@@ -77,7 +77,6 @@ def process_row(row, n_steps, n_agents, output_dir):
         "wealth": quantize_and_pack(wealth, GRID_SIZE, storage_dtype),
         "health": quantize_and_pack(health, GRID_SIZE, storage_dtype),
         "policy": policy.astype(np.uint8),
-        # It's helpful to save the dtype you used for unpacking later
         "storage_dtype_info": str(storage_dtype)
     }
 
@@ -93,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-agents", type=int, default=5000)
     parser.add_argument("--n-steps", type=int, default=4000)
     parser.add_argument("--max-workers", type=int, default=6)
-    parser.add_argument("--model", type=str, default="nocpt_continuous_linear")
+    parser.add_argument("--model", type=str, default="cpt_continuous_linear")
     args = parser.parse_args()
 
     N_SAMPLES = args.n_samples

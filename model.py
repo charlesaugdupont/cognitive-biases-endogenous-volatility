@@ -55,10 +55,10 @@ def interpolate_value(w_coords, h_coords, V):
     return interpolated_val
 
 # ==============================================================================
-# Original helper functions (unchanged)
+# Original helper functions
 # ==============================================================================
 def probability_weighting(p, gamma):
-    p = np.clip(p, 1e-10, 1 - 1e-10) # Avoid division by zero
+    p = np.clip(p, 1e-10, 1 - 1e-10)
     return (p**gamma) / ((p**gamma + (1-p)**gamma)**(1/gamma))
 
 def cpt_value(x, theta, omega, eta):
@@ -69,46 +69,42 @@ def cpt_value(x, theta, omega, eta):
     v[neg_mask] = -omega * (-x[neg_mask]) ** eta
     return v
 
-# def compute_health_delta(h):
-#     min_health, max_health = 1, 200
-#     max_delta, min_delta = 10, 1
-#     k = 0.0175
+def compute_health_cost(h, N, rate, Cmin=1, Cmax=10):
+    h = (h - 1) / (N - 1)
+    y = 1 - (1 - h) ** rate
+    return Cmin + y * (Cmax - Cmin)
 
-#     exp_k_min = np.exp(-k * min_health)
-#     exp_k_max = np.exp(-k * max_health)
-    
-#     scale = (max_delta - min_delta) / (exp_k_min - exp_k_max)
-#     shift = max_delta - scale * exp_k_min
-#     delta_continuous = scale * np.exp(-k * h) + shift
-    
-#     return delta_continuous
+def compute_health_delta(h, N, rate, Cmin=1, Cmax=10):
+    h = (h - 1) / (N - 1)
+    y = (1 - h) ** rate
+    return Cmin + y * (Cmax - Cmin)
 
-# def compute_health_cost(h):
-#     return 11 - compute_health_delta(h)
-
-
-def compute_health_delta(h):
-    return 1 + (h - 1) * (10 - 1) / (200 - 1)
-def compute_health_cost(h):
-    return 10 + (h - 1) * (1 - 10) / (200 - 1)
-
-def utility(w, h, alpha, rate=1):
-    return w**alpha * h**(rate - alpha)
+def utility(w, h, alpha):
+    return w**alpha * h**(1 - alpha)
 
 # ==============================================================================
 # Core model functions
 # ==============================================================================
-def compute_new_wealth(w, w_delta_scale, utility_value, N):
-    """Returns a float instead of an int to represent continuous wealth."""
-    delta = utility_value - w
-    # REMOVED: np.round(...).astype(int)
-    out = w + w_delta_scale * delta
+def wealth_growth_rate(u, N, scale=0.05):
+    u_norm = (u - 1) / (N - 1)
+    return scale * (2 * u_norm - 1)
+
+def compute_new_wealth(w, utility_value, N):
+    out = w * (1 + wealth_growth_rate(utility_value, N))
     out = np.clip(out, 1, N)
     return out
 
 def value_iteration_vectorized(
-    N, alpha, gamma, theta, omega, eta, beta,
-    P_H_increase, w_delta_scale, P_H_decrease
+    N,
+    alpha,
+    gamma,
+    theta,
+    omega,
+    eta,
+    beta,
+    P_H_increase,
+    P_H_decrease,
+    rate
 ):
     """
     Uses interpolation for value lookups.
@@ -118,8 +114,7 @@ def value_iteration_vectorized(
     """
     V = np.zeros((N, N))
     policy = np.zeros((N, N), dtype=np.int16)
-    norms = []
-    parameters = {"N": N, "alpha": alpha, "gamma": gamma, "theta": theta, "omega": omega, "eta": eta, "beta": beta, "P_H_increase": P_H_increase, "w_delta_scale": w_delta_scale, "P_H_decrease": P_H_decrease}
+    parameters = {"N": N, "alpha": alpha, "gamma": gamma, "theta": theta, "omega": omega, "eta": eta, "beta": beta, "P_H_increase": P_H_increase, "P_H_decrease": P_H_decrease, "rate": rate}
 
     cpt_P_increase = probability_weighting(P_H_increase, gamma)
     cpt_P_increase_complement = probability_weighting(1 - P_H_increase, gamma)
@@ -130,15 +125,15 @@ def value_iteration_vectorized(
     W, H = np.meshgrid(w_vals, h_vals, indexing='ij')
 
     reference_utility = utility(W, H, alpha)
-    health_delta = compute_health_delta(H)
-    invest_cost = compute_health_cost(H)
+    health_delta = compute_health_delta(H, N, rate)
+    invest_cost = compute_health_cost(H, N, rate)
     invest_possible_mask = W > invest_cost
 
     norm = np.inf
     while norm > 1e-3:
         # --- Save Action ---
         # Calculate the potential next states as continuous floats
-        new_wealth_save_float = compute_new_wealth(W, w_delta_scale, reference_utility, N)
+        new_wealth_save_float = compute_new_wealth(W, reference_utility, N)
         H_decrease_float = np.maximum(H - health_delta, 1).astype(float)
         # Note: H_steady is just H
 
@@ -161,7 +156,7 @@ def value_iteration_vectorized(
 
             W_after_cost = W_invest - invest_cost[invest_possible_mask]
             utility_after_cost = utility(W_after_cost, H_invest, alpha)
-            new_wealth_invest_float = compute_new_wealth(W_after_cost, w_delta_scale, utility_after_cost, N)
+            new_wealth_invest_float = compute_new_wealth(W_after_cost, utility_after_cost, N)
             H_success_float = np.minimum(H_invest + health_delta[invest_possible_mask], N).astype(float)
 
             delta_util_success = utility(new_wealth_invest_float, H_success_float, alpha) - reference_utility[invest_possible_mask]
@@ -179,7 +174,6 @@ def value_iteration_vectorized(
         new_V = np.maximum(invest_value, save_value)
         policy = (invest_value > save_value).astype(np.int16)
         norm = np.linalg.norm(new_V - V)
-        norms.append(norm)
         V = new_V
 
     return policy, parameters, V
@@ -191,8 +185,7 @@ def simulate(params, policy, num_steps, num_agents, initial_states):
     on an action, the agent finds the nearest grid point and uses the
     pre-computed optimal policy from that point.
     """
-    N = params["N"]
-    w_delta_scale, P_H_increase, P_H_decrease, alpha = params["w_delta_scale"], params["P_H_increase"], params["P_H_decrease"], params["alpha"]
+    N, P_H_increase, P_H_decrease, alpha, rate = params["N"], params["w_delta_scale"], params["P_H_increase"], params["P_H_decrease"], params["alpha"], params["rate"]
 
     # Agent state is now stored as float
     wealth = np.zeros((num_agents, num_steps), dtype=np.float32)
@@ -212,25 +205,25 @@ def simulate(params, policy, num_steps, num_agents, initial_states):
         action = policy[w_idx, h_idx]
 
         # State update calculations are done using the precise float state
-        invest_cost = compute_health_cost(h)
-        health_delta = compute_health_delta(h)
+        invest_cost = compute_health_cost(h, N, rate)
+        health_delta = compute_health_delta(h, N, rate)
         invest_mask = (action == 1) & (w > invest_cost)
         save_mask = ~invest_mask
 
         # Invest action state changes
         if np.any(invest_mask):
             w_after_cost = w[invest_mask] - invest_cost[invest_mask]
-            w[invest_mask] = compute_new_wealth(w_after_cost, w_delta_scale, utility(w_after_cost, h[invest_mask], alpha), N)
+            w[invest_mask] = compute_new_wealth(w_after_cost, utility(w_after_cost, h[invest_mask], alpha), N)
             h[invest_mask] = np.where(rng[invest_mask, step - 1] < P_H_increase, h[invest_mask] + health_delta[invest_mask], h[invest_mask])
 
         # Save action state changes
         if np.any(save_mask):
-            w[save_mask] = compute_new_wealth(w[save_mask], w_delta_scale, utility(w[save_mask], h[save_mask], alpha), N)
+            w[save_mask] = compute_new_wealth(w[save_mask], utility(w[save_mask], h[save_mask], alpha), N)
             h[save_mask] = np.where(rng[save_mask, step - 1] < P_H_decrease, h[save_mask] - health_delta[save_mask], h[save_mask])
 
         wealth[:, step] = np.clip(w, 1, N)
         health[:, step] = np.clip(h, 1, N)
 
-    assert np.all((wealth >= 1) & (wealth <= N)), "Wealth out of bounds"
+    assert np.all((wealth >= 1) & (wealth <= N)), f"Wealth out of bounds: {wealth.flatten().min()}, {wealth.flatten().max()}"
     assert np.all((health >= 1) & (health <= N)), "Health out of bounds"
     return wealth, health
