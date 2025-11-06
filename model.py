@@ -193,7 +193,7 @@ def simulate(params, policy, num_steps, initial_states):
     on an action, the agent finds the nearest grid point and uses the
     pre-computed optimal policy from that point.
     """
-    N, P_H_increase, P_H_decrease, alpha, rate = params["N"], params["w_delta_scale"], params["P_H_increase"], params["P_H_decrease"], params["alpha"], params["rate"]
+    N, P_H_increase, P_H_decrease, alpha, rate = params["N"], params["P_H_increase"], params["P_H_decrease"], params["alpha"], params["rate"]
     num_agents = initial_states.shape[0]
 
     # Agent state is now stored as float

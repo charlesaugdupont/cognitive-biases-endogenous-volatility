@@ -1,5 +1,4 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from utils import generate_initial_agent_states
 from tqdm.auto import tqdm
 from model import *
 import argparse
@@ -50,9 +49,9 @@ def unpack_and_dequantize(data: np.ndarray, grid_size: int, dtype=np.uint16):
     else:
         raise ValueError("data must be an integer array.")
 
-def process_row(row, n_steps, model):
+def process_row(row, n_steps, model, grid_size, initial_states):
     # unpack simulation parameters
-    alpha, gamma, lambduh, eta, P_H_increase, P_H_decrease, rate, initial_states, grid_size = row
+    alpha, gamma, lambduh, eta, P_H_increase, P_H_decrease, rate = row
 
     # compute optimal policy (this now uses the interpolation method)
     policy, params = value_iteration_vectorized(
@@ -97,12 +96,6 @@ if __name__ == "__main__":
     MAX_WORKERS = args.max_workers
     MODEL = args.model
     GRID_SIZE = args.grid_size
-
-    # verify that we do not overwrite data
-    if not os.path.exists(MODEL):
-        os.makedirs(MODEL)
-    else:
-        raise Exception(f"Output directory for {MODEL} model already exists!")
     
     # check that a valid model is passed
     if MODEL not in ["cpt", "nocpt"]:
@@ -111,20 +104,25 @@ if __name__ == "__main__":
     # load initial agent states
     initial_states_path = "initial_states.pickle"
     if not os.path.exists(initial_states_path):
-        raise Exception("Please generate initial agent states with: uv run generate_initial_states.py")
+        raise Exception("Please generate initial agent states with: uv run generate_initial_states.py [--n-agents] [--grid-size] [--seed]")
     with open(initial_states_path, "rb") as f:
         initial_states = pickle.load(f)
     
     # load parameter samples
     samples_path = f"{MODEL}_samples.pickle"
     if not os.path.exists(samples_path):
-        raise Exception("Please a sample of parameter values with: uv run generate_parameter_sample.py")
+        raise Exception("Please a sample of parameter values with: uv run generate_parameter_sample.py [--n-samples] [--model] [--seed]")
     with open(samples_path, "rb") as f:
         samples = pickle.load(f)
 
+    # verify that we do not overwrite data
+    if not os.path.exists(MODEL):
+        os.makedirs(MODEL)
+    else:
+        raise Exception(f"Output directory for '{MODEL}' model already exists!")
+
     # construct set of samples and run simulations in parallel
-    S = [(s["alpha"], s["gamma"], s["lambda"], s["eta"], s["P_H_increase"], s["P_H_decrease"], s["rate"], initial_states, GRID_SIZE) for s in samples]
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(process_row, row, N_STEPS, MODEL) for row in S]
+        futures = [executor.submit(process_row, row, N_STEPS, MODEL, GRID_SIZE, initial_states) for row in samples]
         for future in tqdm(as_completed(futures), total=len(futures)):
             output_file_name = future.result()
