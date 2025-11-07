@@ -85,12 +85,48 @@ def utility(w, h, alpha):
 # ==============================================================================
 # Core model functions
 # ==============================================================================
-def wealth_growth_rate(u, N, scale=0.05):
-    u_norm = (u - 1) / (N - 1)
-    return scale * (2 * u_norm - 1)
+def wealth_growth_rate(
+    h: np.ndarray,
+    min_health: int,
+    max_health: int,
+    scale: float = 0.05,
+    k: float = 0.05
+) -> np.ndarray:
+    """
+    Calculates the wealth growth rate based on health using a sigmoid function.
 
-def compute_new_wealth(w, utility_value, N):
-    out = w * (1 + wealth_growth_rate(utility_value, N))
+    This function models diminishing returns, where health improvements have the
+    greatest impact in the middle of the health range and less impact at the
+    extremes.
+
+    Args:
+        h (np.ndarray): An array of agent health values.
+        min_health (int): The minimum possible health value.
+        max_health (int): The maximum possible health value.
+        scale (float): The scale of possible growth rates (determines max and min endpoints)
+        k (float): The steepness or "gain" of the sigmoid curve.
+                     - A smaller k (~0.01) creates a very gradual, almost linear transition.
+                     - A larger k (~0.1) creates a very sharp, switch-like transition.
+    Returns:
+        np.ndarray: An array of calculated growth rates, one for each agent.
+    """
+    # Normalize the health value to be centered around 0.
+    # This prepares it for the standard logistic function.
+    health_midpoint = (min_health + max_health) / 2.0
+    normalized_h = k * (h - health_midpoint)
+
+    # Apply the standard logistic (sigmoid) function.
+    # The output will be in the range [0, 1].
+    sigmoid_output = 1 / (1 + np.exp(-normalized_h))
+
+    # Scale and shift the sigmoid output to the desired rate range.
+    output_range = 2 * scale
+    r = (sigmoid_output * output_range) - scale
+
+    return r
+
+def compute_new_wealth(w, h, N):
+    out = w * (1 + wealth_growth_rate(h, min_health=1, max_health=N))
     out = np.clip(out, 1, N)
     return out
 
