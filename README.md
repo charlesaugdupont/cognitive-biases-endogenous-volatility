@@ -1,3 +1,5 @@
+# Main Scripts
+
 1) Generate a sample of parameter combinations for experiments
 
     - `uv run generate_parameter_sample.py [--n-samples] [--model] [-seed]`
@@ -17,3 +19,10 @@
         - `max-workers` : specifies desired number of concurrent processes to run experiments in parallel
         - `model` : either `cpt` (cumulative prospect theory enabled) or `nocpt`
         - `grid-size` : granularity of grid used for value iteration (must match the value used to generate initial agent states)
+
+# Analysis
+
+1) Compute dominant frequencies and amplitudes in agent utility trajectories
+    - `uv run compute_dominant_frequencies.py [--model] [--max-workers]`
+        - `model` : either `cpt` (cumulative prospect theory enabled) or `nocpt`
+        - `max-workers` : specifies desired number of concurrent processes to run analyses in parallel
