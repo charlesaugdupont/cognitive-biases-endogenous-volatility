@@ -1,16 +1,15 @@
 import os
 import pickle
+import argparse
 import numpy as np
 from tqdm import tqdm
-from multiprocessing import Pool
 from model import utility
-from scipy.signal import detrend
 from functools import partial
+from multiprocessing import Pool
+from scipy.signal import detrend
+from experiment import unpack_and_dequantize
 
-directory = "cpt"
-file_list = os.listdir(directory)
-
-def process_file_robust(f_name, power_threshold_ratio=0.20, discard_steps=3000, trivial_range_threshold=0):
+def process_file(f_name, directory, power_threshold_ratio=0.20, discard_steps=3000):
     """
     Load a file, compute utility, and return dominant frequencies
     using a robust method with windowing and power thresholding.
@@ -18,27 +17,16 @@ def process_file_robust(f_name, power_threshold_ratio=0.20, discard_steps=3000, 
     with open(os.path.join(directory, f_name), "rb") as f:
         res = pickle.load(f)
 
-    w = res["wealth"][:, discard_steps:].astype(np.int16)
-    h = res["health"][:, discard_steps:].astype(np.int16)
+    grid_size = res["params"]["N"]
+    w = unpack_and_dequantize(res["wealth"][:, discard_steps:], grid_size=grid_size)
+    h = unpack_and_dequantize(res["health"][:, discard_steps:], grid_size=grid_size)
     u = utility(w, h, res["params"]["alpha"])
-
-    # Threshold based on utility range during steady state
-    u_last = u[:, -500:]
-    u_range = np.max(u_last, axis=1) - np.min(u_last, axis=1)
-    is_trivial = u_range < trivial_range_threshold
 
     dominant_frequencies = np.full(w.shape[0], np.nan)
     dominant_amplitudes = np.full(w.shape[0], np.nan)
-    is_significant = ~is_trivial
-    if not np.any(is_significant):
-        return {
-            "frequencies":dominant_frequencies, 
-            "amplitudes":dominant_amplitudes
-        }   
 
-    # Prepare and detrend signals
-    u_to_process = u[is_significant]
-    u = detrend(u_to_process, axis=1)
+    # Apply detrending
+    u = detrend(u, axis=1)
 
     # Apply Hann window
     N = u.shape[1]
@@ -74,20 +62,30 @@ def process_file_robust(f_name, power_threshold_ratio=0.20, discard_steps=3000, 
     dominant_power_vals[zero_power_mask] = np.nan
 
     # Store results
-    dominant_frequencies[is_significant] = dominant_freq_vals
-    dominant_amplitudes[is_significant] = 2 * np.sqrt(dominant_power_vals)
+    dominant_frequencies = dominant_freq_vals
+    dominant_amplitudes = 2 * np.sqrt(dominant_power_vals)
 
     return {
-        "frequencies":dominant_frequencies, 
-        "amplitudes":dominant_amplitudes
+        "frequencies": dominant_frequencies, 
+        "amplitudes": dominant_amplitudes
     }
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str, default="cpt")
+    parser.add_argument("--max-workers", type=int, default=6)
+    args = parser.parse_args()
 
-    with Pool(6) as pool:
-        # Use partial to pass the threshold ratio to the processing function
-        process_func = partial(process_file_robust)
+    MAX_WORKERS = args.max_workers
+    MODEL = args.model
+
+    if not os.path.exists(MODEL):
+        raise Exception(f"Please perform experiments before running this script with: uv run experiment.py [--model] [--n-steps] [--max-workers]  [--grid-size]")
+    
+    file_list = os.listdir(MODEL)
+    with Pool(MAX_WORKERS) as pool:
+        process_func = partial(process_file, directory=MODEL)
         results = list(tqdm(pool.imap(process_func, file_list), total=len(file_list)))
 
-    with open(directory + "_dominant_frequencies_amplitudes.pickle", "wb") as f:
+    with open(f"{MODEL}_dominant_frequencies_amplitudes.pickle", "wb") as f:
         pickle.dump(results, f)
