@@ -9,8 +9,8 @@ import os
 # constants
 THETA = 0.88
 BETA = 0.95
-P_H_CATASTROPHE = 0.00
-HEALTH_SHOCK_SIZE = 1.0
+P_H_CATASTROPHE = 0.01
+HEALTH_SHOCK_SIZE = 0.90
 SEED = 42
 np.random.seed(SEED)
 random.seed(SEED)
