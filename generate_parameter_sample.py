@@ -24,7 +24,8 @@ if __name__ == "__main__":
         "eta":          [0.65, 0.95],
         "P_H_increase": [0.05, 0.95],
         "P_H_decrease": [0.05, 0.95],
-        "rate":         [1.00, 5.00]
+        "rate":         [1.00, 5.00],
+        "w_delta_scale":[0.05, 0.95]
     }
 
     samples = generate_samples(N_SAMPLES, len(parameter_ranges), SEED)

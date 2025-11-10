@@ -9,6 +9,8 @@ import os
 # constants
 THETA = 0.88
 BETA = 0.95
+P_H_CATASTROPHE = 0.00
+HEALTH_SHOCK_SIZE = 1.0
 SEED = 42
 np.random.seed(SEED)
 random.seed(SEED)
@@ -51,7 +53,7 @@ def unpack_and_dequantize(data: np.ndarray, grid_size: int, dtype=np.uint16):
 
 def process_row(row, n_steps, model, grid_size, initial_states):
     # unpack simulation parameters
-    alpha, gamma, lambduh, eta, P_H_increase, P_H_decrease, rate = row
+    alpha, gamma, lambduh, eta, P_H_increase, P_H_decrease, rate, w_delta_scale = row
 
     # compute optimal policy (this now uses the interpolation method)
     policy, params = value_iteration_vectorized(
@@ -63,8 +65,11 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         P_H_increase=P_H_increase,
         P_H_decrease=P_H_decrease,
         rate=rate,
+        w_delta_scale=w_delta_scale,
         theta=THETA,
-        beta=BETA
+        beta=BETA,
+        P_health_catastrophe=P_H_CATASTROPHE,
+        health_shock_size=HEALTH_SHOCK_SIZE
     )
 
     # run agent simulation
