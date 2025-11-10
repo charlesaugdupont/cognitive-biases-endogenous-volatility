@@ -52,10 +52,9 @@ def unpack_and_dequantize(data: np.ndarray, grid_size: int, dtype=np.uint16):
         raise ValueError("data must be an integer array.")
 
 def process_row(row, n_steps, model, grid_size, initial_states):
-    # unpack simulation parameters
     alpha, gamma, lambduh, eta, P_H_increase, P_H_decrease, rate, w_delta_scale = row
 
-    # compute optimal policy (this now uses the interpolation method)
+    # compute optimal policy
     policy, params = value_iteration_vectorized(
         N=grid_size,
         alpha=alpha,

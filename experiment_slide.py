@@ -1,5 +1,5 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from utils import generate_initial_agent_states
+from experiment import quantize_and_pack
 from tqdm.auto import tqdm
 from model import *
 import argparse
@@ -11,47 +11,45 @@ import os
 GRID_SIZE = 200
 THETA = 0.88
 BETA = 0.95
+P_H_CATASTROPHE = 0.00
+HEALTH_SHOCK_SIZE = 1.0
 SEED = 23
-
-# RNG seeding
 np.random.seed(SEED)
 random.seed(SEED)
 
-def process_row(row, n_steps, n_agents, output_dir):
-    # unpack model parameters
-    alpha, prob_health_decrease, prob_health_increase, gamma, w_delta_scale, omega, eta, initial_states = row
+def process_row(row, n_steps, model, grid_size, initial_states):
+    alpha, gamma, lambduh, eta, P_H_increase, P_H_decrease, rate, w_delta_scale = row
 
     # compute optimal policy
-    policy, params, _ = value_iteration_vectorized(
-        N=GRID_SIZE,
-        theta=THETA,
-        omega=omega,
-        eta=eta,
-        beta=BETA,
+    policy, params = value_iteration_vectorized(
+        N=grid_size,
         alpha=alpha,
-        P_H_decrease=prob_health_decrease,
-        P_H_increase=prob_health_increase,
         gamma=gamma,
-        w_delta_scale=w_delta_scale
+        lambduh=lambduh,
+        eta=eta,
+        P_H_increase=P_H_increase,
+        P_H_decrease=P_H_decrease,
+        rate=rate,
+        w_delta_scale=w_delta_scale,
+        theta=THETA,
+        beta=BETA,
+        P_health_catastrophe=P_H_CATASTROPHE,
+        health_shock_size=HEALTH_SHOCK_SIZE
     )
 
     # run agent simulation
-    wealth, health = simulate(
-        params,
-        policy,
-        n_steps,
-        n_agents,
-        initial_states
-    )
+    wealth, health = simulate(params, policy, n_steps, initial_states)
 
+    storage_dtype = np.uint16
     result = {
         "params": params,
-        "wealth": wealth.astype(np.uint8),
-        "health": health.astype(np.uint8),
-        "policy": policy.astype(np.uint8)
+        "wealth": quantize_and_pack(wealth, grid_size, storage_dtype),
+        "health": quantize_and_pack(health, grid_size, storage_dtype),
+        "policy": policy.astype(np.uint8),
+        "storage_dtype_info": str(storage_dtype)
     }
 
-    output_file_name = os.path.join(output_dir, f"{alpha}_{prob_health_decrease}_{prob_health_increase}_{gamma}_{w_delta_scale}_{omega}_{eta}.pickle")
+    output_file_name = os.path.join(model, f"{alpha}_{gamma}_{lambduh}_{eta}_{P_H_increase}_{P_H_decrease}_{rate}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 
@@ -59,42 +57,49 @@ def process_row(row, n_steps, n_agents, output_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n-samples", type=int, default=1024)
-    parser.add_argument("--n-agents", type=int, default=10000)
     parser.add_argument("--n-steps", type=int, default=5000)
     parser.add_argument("--max-workers", type=int, default=6)
-    parser.add_argument("--model", type=str, default="slide_eta")
+    parser.add_argument("--model", type=str, required=True)
+    parser.add_argument("--grid-size", type=int, default=200)
     args = parser.parse_args()
 
-    N_SAMPLES = args.n_samples
-    N_AGENTS = args.n_agents
     N_STEPS = args.n_steps
     MAX_WORKERS = args.max_workers
-    OUTPUT_DIR = args.model
+    MODEL = args.model
+    GRID_SIZE = args.grid_size
 
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    if MODEL not in ["slide_eta", "slide_gamma", "slide_lambda"]:
+        raise Exception("Model must be one of {slide_eta, slide_gamma, slide_lambda}")
 
-    initial_states = generate_initial_agent_states(num_agents=N_AGENTS, N=GRID_SIZE, seed=SEED)
+    if not os.path.exists(MODEL):
+        os.makedirs(MODEL)
+
+    with open("initial_states.pickle", "rb") as f:
+        initial_states = pickle.load(f)
 
     # constant parameters
-    ALPHA = 0.5342054264047887          # (0,1)
-    P_H_DECREASE = 0.8971224934089262   # (0,1)
-    P_H_INCREASE = 0.028917694819860125 # (0,1)
-    A = 0.585525651413017               # (0,1)
+    ALPHA = 0.6609983472679867          # (0,1)
+    P_H_DECREASE = 0.7385942711087851   # (0,1)
+    P_H_INCREASE = 0.599589963875504    # (0,1)
+    A = 0.8332704421368914              # (0,1)
     OMEGA = 1.2779085024959067          # (1,4)
-    ETA = 0.5298487479007337            # (0.5,1)
-    GAMMA = 0.5432851639708858          # (0.4,0.8)
+    ETA = 0.6558972460820358            # (0.5,1)
+    GAMMA = 0.7613187062319042          # (0.4,0.8)
+    LAMBDUH = 2.6273535616937997        # (1.5,3.0)
+    RATE = 4.0805161561520205           # (1.0,5,0)
 
-    # sliding parameter
-    samples = []
-    for param in np.linspace(0.5, 1, 25):
-        samples.append(
-        #    alpha, p_h_decrease, p_h_increase, gamma, a, omega, eta
-            (ALPHA, P_H_DECREASE, P_H_INCREASE, GAMMA, A, OMEGA, param, initial_states)
-        )
+    # construct samples
+    if "gamma" in MODEL:
+        vals = np.linspace(0.4, 0.8, 25)
+        samples = [(ALPHA, v, LAMBDUH, ETA, P_H_INCREASE, P_H_DECREASE, RATE, A) for v in vals]
+    elif "lambda" in MODEL:
+        vals = np.linspace(1.5, 3.0, 25)
+        samples = [(ALPHA, GAMMA, v, ETA, P_H_INCREASE, P_H_DECREASE, RATE, A) for v in vals]
+    elif "eta" in MODEL:
+        vals = np.linspace(0.5, 1.0, 25)
+        samples = [(ALPHA, GAMMA, LAMBDUH, v, P_H_INCREASE, P_H_DECREASE, RATE, A) for v in vals]
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(process_row, row, N_STEPS, N_AGENTS, OUTPUT_DIR) for row in samples]
+        futures = [executor.submit(process_row, row, N_STEPS, MODEL, GRID_SIZE, initial_states) for row in samples]
         for future in tqdm(as_completed(futures), total=len(futures)):
             output_file_name = future.result()
