@@ -85,54 +85,9 @@ def utility(w, h, alpha):
 # ==============================================================================
 # Core model functions
 # ==============================================================================
-# def wealth_growth_rate(
-#     h: np.ndarray,
-#     min_health: int,
-#     max_health: int,
-#     scale: float = 0.01,
-#     k: float = 0.05
-# ) -> np.ndarray:
-#     """
-#     Calculates the wealth growth rate based on health using a sigmoid function.
-
-#     This function models diminishing returns, where health improvements have the
-#     greatest impact in the middle of the health range and less impact at the
-#     extremes.
-
-#     Args:
-#         h (np.ndarray): An array of agent health values.
-#         min_health (int): The minimum possible health value.
-#         max_health (int): The maximum possible health value.
-#         scale (float): The scale of possible growth rates (determines max and min endpoints)
-#         k (float): The steepness or "gain" of the sigmoid curve.
-#                      - A smaller k (~0.01) creates a very gradual, almost linear transition.
-#                      - A larger k (~0.1) creates a very sharp, switch-like transition.
-#     Returns:
-#         np.ndarray: An array of calculated growth rates, one for each agent.
-#     """
-#     # Normalize the health value to be centered around 0.
-#     # This prepares it for the standard logistic function.
-#     health_midpoint = (min_health + max_health) / 4.0
-#     normalized_h = k * (h - health_midpoint)
-
-#     # Apply the standard logistic (sigmoid) function.
-#     # The output will be in the range [0, 1].
-#     sigmoid_output = 1 / (1 + np.exp(-normalized_h))
-
-#     # Scale and shift the sigmoid output to the desired rate range.
-#     output_range = 2 * scale
-#     r = (sigmoid_output * output_range) - scale
-
-#     return r
-
-# def compute_new_wealth(w, h, N):
-#     out = w * (1 + wealth_growth_rate(h, min_health=1, max_health=N))
-#     out = np.clip(out, 1, N)
-#     return out
-
-def compute_new_wealth(w, w_delta_scale, utility_value, N):
+def compute_new_wealth(w, A, utility_value, N):
     delta = utility_value - w
-    out = w + w_delta_scale * delta
+    out = w + A * delta
     out = np.clip(out, 1, N)
     return out
 
@@ -145,11 +100,11 @@ def value_iteration_vectorized(
     P_H_increase,
     P_H_decrease,
     rate,
-    w_delta_scale,
+    A,
     theta,
     beta,
     P_health_catastrophe,
-    health_shock_size
+    shock_size
 ):
     """
     Perform value iteration with interpolation to compute optimal policy.
@@ -160,16 +115,16 @@ def value_iteration_vectorized(
         "N": N,
         "alpha": alpha,
         "gamma": gamma,
-        "lambduh": lambduh,
+        "lambda": lambduh,
         "eta": eta,
         "P_H_increase": P_H_increase,
         "P_H_decrease": P_H_decrease,
         "rate": rate,
-        "w_delta_scale": w_delta_scale,
+        "A": A,
         "theta": theta,
         "beta": beta,
         "P_health_catastrophe": P_health_catastrophe,
-        "health_shock_size": health_shock_size
+        "shock_size": shock_size
     }
 
     # Pre-calculate CPT probabilities for actions AND the catastrophe
@@ -191,11 +146,11 @@ def value_iteration_vectorized(
     while norm > 1e-3:
         # --- Save Action ---
         # Calculate the potential next states as continuous floats
-        new_wealth_save_float = compute_new_wealth(W, w_delta_scale, reference_utility, N)
+        new_wealth_save_float = compute_new_wealth(W, A, reference_utility, N)
         H_decrease_float = np.maximum(H - health_delta, 1).astype(float)
 
-        H_decrease_catastrophe_float = np.maximum(H_decrease_float * health_shock_size, 1).astype(float)
-        H_steady_catastrophe_float = np.maximum(H * health_shock_size, 1).astype(float)
+        H_decrease_catastrophe_float = np.maximum(H_decrease_float * shock_size, 1).astype(float)
+        H_steady_catastrophe_float = np.maximum(H * shock_size, 1).astype(float)
 
         delta_util_decrease = utility(new_wealth_save_float, H_decrease_float, alpha) - reference_utility
         delta_util_steady = utility(new_wealth_save_float, H, alpha) - reference_utility
@@ -222,10 +177,10 @@ def value_iteration_vectorized(
 
             W_after_cost = W_invest - invest_cost[invest_possible_mask]
             utility_after_cost = utility(W_after_cost, H_invest, alpha)
-            new_wealth_invest_float = compute_new_wealth(W_after_cost, w_delta_scale, utility_after_cost, N)
+            new_wealth_invest_float = compute_new_wealth(W_after_cost, A, utility_after_cost, N)
             H_success_float = np.minimum(H_invest + health_delta[invest_possible_mask], N).astype(float)
-            H_success_catastrophe_float = np.maximum(H_success_float * health_shock_size, 1).astype(float)
-            H_fail_catastrophe_float = np.maximum(H_invest * health_shock_size, 1).astype(float)
+            H_success_catastrophe_float = np.maximum(H_success_float * shock_size, 1).astype(float)
+            H_fail_catastrophe_float = np.maximum(H_invest * shock_size, 1).astype(float)
 
             delta_util_success = utility(new_wealth_invest_float, H_success_float, alpha) - reference_utility[invest_possible_mask]
             delta_util_fail = utility(new_wealth_invest_float, H_invest, alpha) - reference_utility[invest_possible_mask]
@@ -262,8 +217,8 @@ def simulate(params, policy, num_steps, initial_states):
     P_H_increase = params["P_H_increase"]
     P_H_decrease = params["P_H_decrease"]
     rate = params["rate"]
-    w_delta_scale = params["w_delta_scale"]
-    P_health_catastrophe, health_shock_size = params["P_health_catastrophe"], params["health_shock_size"]
+    A = params["A"]
+    P_health_catastrophe, shock_size = params["P_health_catastrophe"], params["shock_size"]
     num_agents = initial_states.shape[0]
 
     # Agent state is now stored as float
@@ -294,19 +249,19 @@ def simulate(params, policy, num_steps, initial_states):
         # Invest action state changes
         if np.any(invest_mask):
             w_after_cost = w[invest_mask] - invest_cost[invest_mask]
-            w[invest_mask] = compute_new_wealth(w_after_cost, w_delta_scale, utility(w_after_cost, h[invest_mask], alpha), N)
+            w[invest_mask] = compute_new_wealth(w_after_cost, A, utility(w_after_cost, h[invest_mask], alpha), N)
             h[invest_mask] = np.where(action_rng[invest_mask, step - 1] < P_H_increase, h[invest_mask] + health_delta[invest_mask], h[invest_mask])
 
         # Save action state changes
         if np.any(save_mask):
-            w[save_mask] = compute_new_wealth(w[save_mask], w_delta_scale, utility(w[save_mask], h[save_mask], alpha), N)
+            w[save_mask] = compute_new_wealth(w[save_mask], A, utility(w[save_mask], h[save_mask], alpha), N)
             h[save_mask] = np.where(action_rng[save_mask, step - 1] < P_H_decrease, h[save_mask] - health_delta[save_mask], h[save_mask])
 
         # --- APPLY CATASTROPHIC HEALTH SHOCK ---
         # This happens to all agents, regardless of their action.
         catastrophe_mask = catastrophe_rng[:, step - 1] < P_health_catastrophe
         if np.any(catastrophe_mask):
-            h[catastrophe_mask] = h[catastrophe_mask] * health_shock_size
+            h[catastrophe_mask] = h[catastrophe_mask] * shock_size
 
         wealth[:, step] = np.clip(w, 1, N)
         health[:, step] = np.clip(h, 1, N)

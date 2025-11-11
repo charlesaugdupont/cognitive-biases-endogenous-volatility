@@ -8,9 +8,11 @@ import os
 
 # constants
 THETA = 0.88
+ETA = 0.88
 BETA = 0.95
 P_H_CATASTROPHE = 0.01
-HEALTH_SHOCK_SIZE = 0.90
+P_H_INCREASE = 0.95
+P_H_DECREASE = 0.05
 SEED = 42
 np.random.seed(SEED)
 random.seed(SEED)
@@ -52,7 +54,7 @@ def unpack_and_dequantize(data: np.ndarray, grid_size: int, dtype=np.uint16):
         raise ValueError("data must be an integer array.")
 
 def process_row(row, n_steps, model, grid_size, initial_states):
-    alpha, gamma, lambduh, eta, P_H_increase, P_H_decrease, rate, w_delta_scale = row
+    alpha, gamma, lambduh, rate, A, shock_size = row
 
     # compute optimal policy
     policy, params = value_iteration_vectorized(
@@ -60,15 +62,15 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         alpha=alpha,
         gamma=gamma,
         lambduh=lambduh,
-        eta=eta,
-        P_H_increase=P_H_increase,
-        P_H_decrease=P_H_decrease,
+        eta=ETA,
+        P_H_increase=P_H_INCREASE,
+        P_H_decrease=P_H_DECREASE,
         rate=rate,
-        w_delta_scale=w_delta_scale,
+        A=A,
         theta=THETA,
         beta=BETA,
         P_health_catastrophe=P_H_CATASTROPHE,
-        health_shock_size=HEALTH_SHOCK_SIZE
+        shock_size=shock_size
     )
 
     # run agent simulation
@@ -82,7 +84,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         "policy": policy.astype(np.uint8),
         "storage_dtype_info": str(storage_dtype)
     }
-    output_file_name = os.path.join(model, f"{alpha}_{gamma}_{lambduh}_{eta}_{P_H_increase}_{P_H_decrease}_{rate}.pickle")
+    output_file_name = os.path.join(model, f"{alpha}_{gamma}_{lambduh}_{rate}_{A}_{shock_size}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 

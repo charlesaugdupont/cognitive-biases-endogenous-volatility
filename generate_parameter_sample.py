@@ -3,6 +3,15 @@ import numpy as np
 import argparse
 import pickle
 
+PARAMETER_RANGES = {
+    "alpha":        [0.30, 0.70],
+    "gamma":        [0.50, 0.80],
+    "lambda":       [1.50, 3.00],
+    "rate":         [1.00, 5.00],
+    "A":            [0.05, 0.95],
+    "shock_size":   [0.70, 1.00]
+}
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-samples", type=int, default=1024)
@@ -17,22 +26,11 @@ if __name__ == "__main__":
     if MODEL not in ["cpt", "nocpt"]:
         raise Exception(f"Invalid model name: {MODEL}")
 
-    parameter_ranges = {
-        "alpha":        [0.05, 0.95],
-        "gamma":        [0.50, 0.80],
-        "lambda":       [1.50, 3.00],
-        "eta":          [0.65, 0.95],
-        "P_H_increase": [0.05, 0.95],
-        "P_H_decrease": [0.05, 0.95],
-        "rate":         [1.00, 5.00],
-        "w_delta_scale":[0.05, 0.95]
-    }
-
-    samples = generate_samples(N_SAMPLES, len(parameter_ranges), SEED)
+    samples = generate_samples(N_SAMPLES, len(PARAMETER_RANGES), SEED)
 
     scaled_samples = np.zeros_like(samples)
-    for i, (param, (low, high)) in enumerate(parameter_ranges.items()):
-        if MODEL == "nocpt" and param in ["gamma", "lambda", "eta"]:
+    for i, (param, (low, high)) in enumerate(PARAMETER_RANGES.items()):
+        if MODEL == "nocpt" and param in ["gamma", "lambda"]:
             scaled_samples[:, i] = 1
         else:
             scaled_samples[:, i] = samples[:, i] * (high - low) + low
