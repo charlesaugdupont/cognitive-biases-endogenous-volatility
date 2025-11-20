@@ -23,14 +23,14 @@ if __name__ == "__main__":
     MODEL = args.model
     SEED = args.seed
 
-    if MODEL not in ["cpt", "nocpt"]:
+    if MODEL not in ["cpt", "pt"]:
         raise Exception(f"Invalid model name: {MODEL}")
 
     samples = generate_samples(N_SAMPLES, len(PARAMETER_RANGES), SEED)
 
     scaled_samples = np.zeros_like(samples)
     for i, (param, (low, high)) in enumerate(PARAMETER_RANGES.items()):
-        if MODEL == "nocpt" and param in ["gamma", "lambda"]:
+        if MODEL == "pt" and param in ["gamma", "lambda"]:
             scaled_samples[:, i] = 1
         else:
             scaled_samples[:, i] = samples[:, i] * (high - low) + low

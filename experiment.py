@@ -104,8 +104,8 @@ if __name__ == "__main__":
     GRID_SIZE = args.grid_size
     
     # check that a valid model is passed
-    if MODEL not in ["cpt", "nocpt"]:
-        raise Exception(f"Model must be either 'cpt' or 'nocpt'")
+    if MODEL not in ["cpt", "pt"]:
+        raise Exception(f"Model must be either 'cpt' or 'pt'")
     
     # load initial agent states
     initial_states_path = "initial_states.pickle"

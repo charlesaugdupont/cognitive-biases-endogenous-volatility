@@ -4,7 +4,7 @@
 
     - `uv run generate_parameter_sample.py [--n-samples] [--model] [-seed]`
         - `n-samples` : desired number of unique parameter combinations (generated using latin hypercube sampling)
-        - `model` : either `cpt` (cumulative prospect theory enabled) or `nocpt`
+        - `model` : either `cpt` (cumulative prospect theory enabled) or `pt`
         - `seed` : random seed
 
 2) Generate initial agent states for experiments
@@ -13,16 +13,16 @@
         - `grid-size` : granularity of grid used for value iteration
         - `seed` : random seed
 
-3) Run a set of experiments for a particular model (cpt or nocpt)
+3) Run a set of experiments for a particular model (cpt or pt)
     - `uv run experiment.py [--n-steps] [--max-workers] [--model] [--grid-size]`
         - `n-steps` : number of steps to run each agent simulation
         - `max-workers` : specifies desired number of concurrent processes to run experiments in parallel
-        - `model` : either `cpt` (cumulative prospect theory enabled) or `nocpt`
+        - `model` : either `cpt` (cumulative prospect theory enabled) or `pt`
         - `grid-size` : granularity of grid used for value iteration (must match the value used to generate initial agent states)
 
 # Analysis
 
 1) Compute dominant frequencies and amplitudes in agent utility trajectories
     - `uv run compute_dominant_frequencies.py [--model] [--max-workers]`
-        - `model` : either `cpt` (cumulative prospect theory enabled) or `nocpt`
+        - `model` : either `cpt` (cumulative prospect theory enabled) or `pt`
         - `max-workers` : specifies desired number of concurrent processes to run analyses in parallel
