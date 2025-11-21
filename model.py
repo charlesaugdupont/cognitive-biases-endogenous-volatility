@@ -82,16 +82,147 @@ def compute_health_delta(h, N, rate, Cmin=1, Cmax=10):
 def utility(w, h, alpha):
     return w**alpha * h**(1 - alpha)
 
-# ==============================================================================
-# Core model functions
-# ==============================================================================
 def compute_new_wealth(w, A, utility_value, N):
     delta = utility_value - w
     out = w + A * delta
     out = np.clip(out, 1, N)
     return out
 
-def value_iteration_vectorized(
+# ==============================================================================
+# Core model functions
+# ==============================================================================
+def compute_optimal_policy(
+    model,
+    N,
+    alpha,
+    gamma,
+    lambduh,
+    eta,
+    P_H_increase,
+    P_H_decrease,
+    rate,
+    A,
+    theta,
+    beta,
+    P_health_catastrophe,
+    shock_size
+):
+    if model in ["pt", "cpt"]:
+        return value_iteration_pt_cpt(
+            N,
+            alpha,
+            gamma,
+            lambduh,
+            eta,
+            P_H_increase,
+            P_H_decrease,
+            rate,
+            A,
+            theta,
+            beta,
+            P_health_catastrophe,
+            shock_size
+        )
+    else:
+        return value_iteration_eut(
+            N,
+            alpha,
+            P_H_increase,
+            P_H_decrease,
+            rate,
+            A,
+            beta,
+            P_health_catastrophe,
+            shock_size
+        )
+
+def value_iteration_eut(
+    N,
+    alpha,
+    P_H_increase,
+    P_H_decrease,
+    rate,
+    A,
+    beta,
+    P_health_catastrophe,
+    shock_size
+):
+    """
+    Perform value iteration based on Expected Utility Theory
+    """
+    V = np.zeros((N, N))
+    policy = np.zeros((N, N), dtype=np.int16)
+    parameters = {
+        "N": N,
+        "alpha": alpha,
+        "P_H_increase": P_H_increase,
+        "P_H_decrease": P_H_decrease,
+        "rate": rate,
+        "A": A,
+        "beta": beta,
+        "P_health_catastrophe": P_health_catastrophe,
+        "shock_size": shock_size
+    }
+
+    w_vals, h_vals = np.arange(1, N + 1), np.arange(1, N + 1)
+    W, H = np.meshgrid(w_vals, h_vals, indexing='ij')
+    health_delta = compute_health_delta(H, N, rate)
+    invest_cost = compute_health_cost(H, N, rate)
+    invest_possible_mask = W > invest_cost
+
+    norm = np.inf
+    while norm > 1e-3:
+        # --- Save Action ---
+        new_wealth_save_float = compute_new_wealth(W, A, utility(W, H, alpha), N)
+        H_decrease_float = np.maximum(H - health_delta, 1).astype(float)
+        H_decrease_catastrophe_float = np.maximum(H_decrease_float * shock_size, 1).astype(float)
+        H_steady_catastrophe_float = np.maximum(H * shock_size, 1).astype(float)
+
+        val_decrease = interpolate_value(new_wealth_save_float.ravel(), H_decrease_float.ravel(), V).reshape(N, N)
+        val_decrease_cat = interpolate_value(new_wealth_save_float.ravel(), H_decrease_catastrophe_float.ravel(), V).reshape(N, N)
+        val_steady = interpolate_value(new_wealth_save_float.ravel(), H.ravel().astype(float), V).reshape(N, N)
+        val_steady_cat = interpolate_value(new_wealth_save_float.ravel(), H_steady_catastrophe_float.ravel(), V).reshape(N, N)
+        
+        expected_val_decrease = (1 - P_health_catastrophe) * val_decrease + P_health_catastrophe * val_decrease_cat
+        expected_val_steady = (1 - P_health_catastrophe) * val_steady + P_health_catastrophe * val_steady_cat
+        
+        expected_future_val_save = P_H_decrease * expected_val_decrease + (1 - P_H_decrease) * expected_val_steady
+        save_value = utility(W, H, alpha) + beta * expected_future_val_save
+
+        # --- Invest Action ---
+        invest_value = np.full((N, N), -np.inf)
+        if np.any(invest_possible_mask):
+            W_invest = W[invest_possible_mask]
+            H_invest = H[invest_possible_mask]
+            
+            W_after_cost = W_invest - invest_cost[invest_possible_mask]
+            utility_after_cost = utility(W_after_cost, H_invest, alpha)
+            new_wealth_invest_float = compute_new_wealth(W_after_cost, A, utility_after_cost, N)
+            
+            H_success_float = np.minimum(H_invest + health_delta[invest_possible_mask], N).astype(float)
+            H_success_catastrophe_float = np.maximum(H_success_float * shock_size, 1).astype(float)
+            H_fail_catastrophe_float = np.maximum(H_invest * shock_size, 1).astype(float)
+
+            val_success = interpolate_value(new_wealth_invest_float, H_success_float, V)
+            val_success_cat = interpolate_value(new_wealth_invest_float, H_success_catastrophe_float, V)
+            val_fail = interpolate_value(new_wealth_invest_float, H_invest.astype(float), V)
+            val_fail_cat = interpolate_value(new_wealth_invest_float, H_fail_catastrophe_float, V)
+
+            expected_val_success = (1 - P_health_catastrophe) * val_success + P_health_catastrophe * val_success_cat
+            expected_val_fail = (1 - P_health_catastrophe) * val_fail + P_health_catastrophe * val_fail_cat
+            
+            expected_future_val_invest = P_H_increase * expected_val_success + (1 - P_H_increase) * expected_val_fail
+            invest_value[invest_possible_mask] = utility_after_cost + beta * expected_future_val_invest
+            
+        # --- Policy and Value Update ---
+        new_V = np.maximum(invest_value, save_value)
+        policy = (invest_value > save_value).astype(np.int16)
+        norm = np.linalg.norm(new_V - V)
+        V = new_V
+
+    return policy, parameters
+
+def value_iteration_pt_cpt(
     N,
     alpha,
     gamma,
@@ -107,7 +238,7 @@ def value_iteration_vectorized(
     shock_size
 ):
     """
-    Perform value iteration with interpolation to compute optimal policy.
+    Perform value iteration based on (Cumulative) Prospect Theory
     """
     V = np.zeros((N, N))
     policy = np.zeros((N, N), dtype=np.int16)

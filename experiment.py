@@ -54,10 +54,12 @@ def unpack_and_dequantize(data: np.ndarray, grid_size: int, dtype=np.uint16):
         raise ValueError("data must be an integer array.")
 
 def process_row(row, n_steps, model, grid_size, initial_states):
+    # unpack parameter set
     alpha, gamma, lambduh, rate, A, shock_size = row
 
-    # compute optimal policy
-    policy, params = value_iteration_vectorized(
+    # compute policy
+    policy, params = compute_optimal_policy(
+        model=model,
         N=grid_size,
         alpha=alpha,
         gamma=gamma,
@@ -73,7 +75,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         shock_size=shock_size
     )
 
-    # run agent simulation
+    # run agent simulations
     wealth, health = simulate(params, policy, n_steps, initial_states)
 
     storage_dtype = np.uint16
@@ -104,8 +106,8 @@ if __name__ == "__main__":
     GRID_SIZE = args.grid_size
     
     # check that a valid model is passed
-    if MODEL not in ["cpt", "pt"]:
-        raise Exception(f"Model must be either 'cpt' or 'pt'")
+    if MODEL not in ["cpt", "pt", "eut"]:
+        raise Exception(f"Model must be one of: 'cpt', 'pt', 'eut'")
     
     # load initial agent states
     initial_states_path = "initial_states.pickle"
