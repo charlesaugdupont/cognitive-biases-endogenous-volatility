@@ -15,7 +15,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
     alpha, gamma, lambduh, rate, A, shock_size = row
 
     # compute optimal policy
-    policy, params = value_iteration_vectorized(
+    policy, params = value_iteration_pt_cpt(
         N=grid_size,
         alpha=alpha,
         gamma=gamma,
@@ -62,8 +62,8 @@ if __name__ == "__main__":
     MODEL = args.model
     GRID_SIZE = args.grid_size
 
-    if MODEL not in ["slide_gamma", "slide_lambda"]:
-        raise Exception("Model must be one of {slide_gamma, slide_lambda}")
+    if MODEL not in ["slide_gamma", "slide_lambda", "slide_rate"]:
+        raise Exception("Model must be one of {slide_gamma, slide_lambda, slide_rate}")
 
     if not os.path.exists(MODEL):
         os.makedirs(MODEL)
@@ -71,13 +71,13 @@ if __name__ == "__main__":
     with open("initial_states.pickle", "rb") as f:
         initial_states = pickle.load(f)
 
-    # constant parameters
-    ALPHA = 0.6609983472679867          # (0.0, 1.0)
-    A = 0.8332704421368914              # (0.0, 1.0)
-    GAMMA = 0.7613187062319042          # (0.4, 0.8)
-    LAMBDUH = 2.6273535616937997        # (1.5, 3.0)
-    RATE = 4.0805161561520205           # (1.0, 5,0)
-    SHOCK_SIZE = -1 #TBD                # (0.8, 1.0)
+    # constants
+    ALPHA = 0.5840430741439839          # (0.0, 1.0)
+    A = 0.6694087990448646              # (0.0, 1.0)
+    GAMMA = 0.7487308119303844          # (0.4, 0.8)
+    LAMBDUH = 2.529457110841415         # (1.5, 3.0)
+    RATE = 3.2762230765095177           # (1.0, 5,0)
+    SHOCK_SIZE = 0.9474815806644064     # (0.8, 1.0)
 
     # construct samples
     num_samples = 25
@@ -87,6 +87,9 @@ if __name__ == "__main__":
     elif "lambda" in MODEL:
         vals = np.linspace(PARAMETER_RANGES["lambda"][0], PARAMETER_RANGES["lambda"][1], num_samples)
         samples = [(ALPHA, GAMMA, v, RATE, A, SHOCK_SIZE) for v in vals]
+    elif "rate" in MODEL:
+        vals = np.linspace(PARAMETER_RANGES["rate"][0], PARAMETER_RANGES["rate"][1], num_samples)
+        samples = [(ALPHA, GAMMA, LAMBDUH, v, A, SHOCK_SIZE) for v in vals]
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, MODEL, GRID_SIZE, initial_states) for row in samples]
