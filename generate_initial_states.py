@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     states = generate_samples(N_AGENTS, 2, SEED)
     scaled_states = np.zeros_like(states)
-    for i in range (2):
+    for i in range(2):
         scaled_states[:, i] = states[:, i] * (GRID_SIZE - 1) + 1
 
     save_path = f"initial_states.pickle"

@@ -235,7 +235,8 @@ def value_iteration_pt_cpt(
     theta,
     beta,
     P_health_catastrophe,
-    shock_size
+    shock_size,
+    return_values=False
 ):
     """
     Perform value iteration based on (Cumulative) Prospect Theory
@@ -333,6 +334,9 @@ def value_iteration_pt_cpt(
         policy = (invest_value > save_value).astype(np.int16)
         norm = np.linalg.norm(new_V - V)
         V = new_V
+
+    if return_values:
+        return policy, parameters, invest_value, save_value
 
     return policy, parameters
 

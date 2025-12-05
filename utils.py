@@ -3,7 +3,6 @@ from scipy.stats.qmc import LatinHypercube
 from scipy.interpolate import RectBivariateSpline
 from scipy.optimize import basinhopping
 from collections import Counter
-from experiment import unpack_and_dequantize
 from model import *
 
 def generate_samples(num_samples, num_params, seed):
