@@ -30,7 +30,9 @@ if __name__ == "__main__":
 
     scaled_samples = np.zeros_like(samples)
     for i, (param, (low, high)) in enumerate(PARAMETER_RANGES.items()):
-        if MODEL in ["pt", "eut"] and param in ["gamma", "lambda"]:
+        if MODEL == "eut" and param in ["gamma", "lambda"]:
+             scaled_samples[:, i] = 1
+        elif MODEL == "pt" and param == "gamma":
             scaled_samples[:, i] = 1
         else:
             scaled_samples[:, i] = samples[:, i] * (high - low) + low
