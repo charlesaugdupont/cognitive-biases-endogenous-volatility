@@ -10,7 +10,7 @@ import os
 THETA = 0.88
 ETA = 0.88
 BETA = 0.95
-P_H_CATASTROPHE = 0.01
+P_H_CATASTROPHE = 0.0
 P_H_INCREASE = 0.95
 P_H_DECREASE = 0.05
 SEED = 42
@@ -86,7 +86,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         "policy": policy.astype(np.uint8),
         "storage_dtype_info": str(storage_dtype)
     }
-    output_file_name = os.path.join(model, f"{alpha}_{gamma}_{lambduh}_{rate}_{A}_{shock_size}.pickle")
+    output_file_name = os.path.join(model, f"{alpha}_{gamma}_{lambduh}_{rate}_{A}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 
