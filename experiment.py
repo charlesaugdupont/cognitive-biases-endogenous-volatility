@@ -10,7 +10,6 @@ import os
 THETA = 0.88
 ETA = 0.88
 BETA = 0.95
-P_H_CATASTROPHE = 0.0
 P_H_INCREASE = 0.95
 P_H_DECREASE = 0.05
 SEED = 42
@@ -55,7 +54,7 @@ def unpack_and_dequantize(data: np.ndarray, grid_size: int, dtype=np.uint16):
 
 def process_row(row, n_steps, model, grid_size, initial_states):
     # unpack parameter set
-    alpha, gamma, lambduh, rate, A, shock_size = row
+    alpha, gamma, lambduh, rate, A = row
 
     # compute policy
     policy, params = compute_optimal_policy(
@@ -70,9 +69,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         rate=rate,
         A=A,
         theta=THETA if model in ["pt", "cpt"] else 1.0,
-        beta=BETA,
-        P_health_catastrophe=P_H_CATASTROPHE,
-        shock_size=shock_size
+        beta=BETA
     )
 
     # run agent simulations

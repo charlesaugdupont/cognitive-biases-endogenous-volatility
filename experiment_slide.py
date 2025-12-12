@@ -1,4 +1,4 @@
-from experiment import quantize_and_pack, THETA, ETA, BETA, P_H_CATASTROPHE, P_H_DECREASE, P_H_INCREASE, SEED
+from experiment import quantize_and_pack, THETA, ETA, BETA, P_H_DECREASE, P_H_INCREASE, SEED
 from generate_parameter_sample import PARAMETER_RANGES
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm.auto import tqdm
@@ -12,7 +12,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 def process_row(row, n_steps, model, grid_size, initial_states):
-    alpha, gamma, lambduh, rate, A, shock_size = row
+    alpha, gamma, lambduh, rate, A = row
 
     # compute optimal policy
     policy, params = value_iteration_pt_cpt(
@@ -26,9 +26,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         rate=rate,
         A=A,
         theta=THETA,
-        beta=BETA,
-        P_health_catastrophe=P_H_CATASTROPHE,
-        shock_size=shock_size
+        beta=BETA
     )
 
     # run agent simulation
@@ -43,7 +41,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
         "storage_dtype_info": str(storage_dtype)
     }
 
-    output_file_name = os.path.join(model, f"{alpha}_{gamma}_{lambduh}_{rate}_{A}_{shock_size}.pickle")
+    output_file_name = os.path.join(model, f"{alpha}_{gamma}_{lambduh}_{rate}_{A}.pickle")
     with open(output_file_name, 'wb') as f:
         pickle.dump(result, f)
 

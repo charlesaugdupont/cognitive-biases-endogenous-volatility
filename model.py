@@ -103,9 +103,7 @@ def compute_optimal_policy(
     rate,
     A,
     theta,
-    beta,
-    P_health_catastrophe,
-    shock_size
+    beta
 ):
     if model in ["pt", "cpt"]:
         return value_iteration_pt_cpt(
@@ -119,9 +117,7 @@ def compute_optimal_policy(
             rate,
             A,
             theta,
-            beta,
-            P_health_catastrophe,
-            shock_size
+            beta
         )
     else:
         return value_iteration_eut(
@@ -131,9 +127,7 @@ def compute_optimal_policy(
             P_H_decrease,
             rate,
             A,
-            beta,
-            P_health_catastrophe,
-            shock_size
+            beta
         )
 
 def value_iteration_eut(
@@ -143,9 +137,7 @@ def value_iteration_eut(
     P_H_decrease,
     rate,
     A,
-    beta,
-    P_health_catastrophe,
-    shock_size
+    beta
 ):
     """
     Perform value iteration based on Expected Utility Theory
@@ -159,9 +151,7 @@ def value_iteration_eut(
         "P_H_decrease": P_H_decrease,
         "rate": rate,
         "A": A,
-        "beta": beta,
-        "P_health_catastrophe": P_health_catastrophe,
-        "shock_size": shock_size
+        "beta": beta
     }
 
     w_vals, h_vals = np.arange(1, N + 1), np.arange(1, N + 1)
@@ -175,18 +165,9 @@ def value_iteration_eut(
         # --- Save Action ---
         new_wealth_save_float = compute_new_wealth(W, A, utility(W, H, alpha), N)
         H_decrease_float = np.maximum(H - health_delta, 1).astype(float)
-        H_decrease_catastrophe_float = np.maximum(H_decrease_float * shock_size, 1).astype(float)
-        H_steady_catastrophe_float = np.maximum(H * shock_size, 1).astype(float)
-
         val_decrease = interpolate_value(new_wealth_save_float.ravel(), H_decrease_float.ravel(), V).reshape(N, N)
-        val_decrease_cat = interpolate_value(new_wealth_save_float.ravel(), H_decrease_catastrophe_float.ravel(), V).reshape(N, N)
         val_steady = interpolate_value(new_wealth_save_float.ravel(), H.ravel().astype(float), V).reshape(N, N)
-        val_steady_cat = interpolate_value(new_wealth_save_float.ravel(), H_steady_catastrophe_float.ravel(), V).reshape(N, N)
-        
-        expected_val_decrease = (1 - P_health_catastrophe) * val_decrease + P_health_catastrophe * val_decrease_cat
-        expected_val_steady = (1 - P_health_catastrophe) * val_steady + P_health_catastrophe * val_steady_cat
-        
-        expected_future_val_save = P_H_decrease * expected_val_decrease + (1 - P_H_decrease) * expected_val_steady
+        expected_future_val_save = P_H_decrease * val_decrease + (1 - P_H_decrease) * val_steady
         save_value = utility(W, H, alpha) + beta * expected_future_val_save
 
         # --- Invest Action ---
@@ -194,24 +175,13 @@ def value_iteration_eut(
         if np.any(invest_possible_mask):
             W_invest = W[invest_possible_mask]
             H_invest = H[invest_possible_mask]
-            
             W_after_cost = W_invest - invest_cost[invest_possible_mask]
             utility_after_cost = utility(W_after_cost, H_invest, alpha)
             new_wealth_invest_float = compute_new_wealth(W_after_cost, A, utility_after_cost, N)
-            
             H_success_float = np.minimum(H_invest + health_delta[invest_possible_mask], N).astype(float)
-            H_success_catastrophe_float = np.maximum(H_success_float * shock_size, 1).astype(float)
-            H_fail_catastrophe_float = np.maximum(H_invest * shock_size, 1).astype(float)
-
             val_success = interpolate_value(new_wealth_invest_float, H_success_float, V)
-            val_success_cat = interpolate_value(new_wealth_invest_float, H_success_catastrophe_float, V)
             val_fail = interpolate_value(new_wealth_invest_float, H_invest.astype(float), V)
-            val_fail_cat = interpolate_value(new_wealth_invest_float, H_fail_catastrophe_float, V)
-
-            expected_val_success = (1 - P_health_catastrophe) * val_success + P_health_catastrophe * val_success_cat
-            expected_val_fail = (1 - P_health_catastrophe) * val_fail + P_health_catastrophe * val_fail_cat
-            
-            expected_future_val_invest = P_H_increase * expected_val_success + (1 - P_H_increase) * expected_val_fail
+            expected_future_val_invest = P_H_increase * val_success + (1 - P_H_increase) * val_fail
             invest_value[invest_possible_mask] = utility_after_cost + beta * expected_future_val_invest
             
         # --- Policy and Value Update ---
@@ -234,8 +204,6 @@ def value_iteration_pt_cpt(
     A,
     theta,
     beta,
-    P_health_catastrophe,
-    shock_size,
     return_values=False
 ):
     """
@@ -254,18 +222,14 @@ def value_iteration_pt_cpt(
         "rate": rate,
         "A": A,
         "theta": theta,
-        "beta": beta,
-        "P_health_catastrophe": P_health_catastrophe,
-        "shock_size": shock_size
+        "beta": beta
     }
 
-    # Pre-calculate CPT probabilities for actions AND the catastrophe
+    # Pre-calculate CPT probabilities for actions
     cpt_P_increase = probability_weighting(P_H_increase, gamma)
     cpt_P_increase_complement = probability_weighting(1 - P_H_increase, gamma)
     cpt_P_decrease = probability_weighting(P_H_decrease, gamma)
     cpt_P_decrease_complement = probability_weighting(1 - P_H_decrease, gamma)
-    cpt_P_catastrophe = probability_weighting(P_health_catastrophe, gamma)
-    cpt_P_no_catastrophe = probability_weighting(1 - P_health_catastrophe, gamma)
 
     w_vals, h_vals = np.arange(1, N + 1), np.arange(1, N + 1)
     W, H = np.meshgrid(w_vals, h_vals, indexing='ij')
@@ -277,28 +241,15 @@ def value_iteration_pt_cpt(
     norm = np.inf
     while norm > 1e-3:
         # --- Save Action ---
-        # Calculate the potential next states as continuous floats
         new_wealth_save_float = compute_new_wealth(W, A, reference_utility, N)
         H_decrease_float = np.maximum(H - health_delta, 1).astype(float)
-
-        H_decrease_catastrophe_float = np.maximum(H_decrease_float * shock_size, 1).astype(float)
-        H_steady_catastrophe_float = np.maximum(H * shock_size, 1).astype(float)
-
         delta_util_decrease = utility(new_wealth_save_float, H_decrease_float, alpha) - reference_utility
         delta_util_steady = utility(new_wealth_save_float, H, alpha) - reference_utility
         immediate_cpt_save = (cpt_P_decrease * cpt_value(delta_util_decrease, theta, lambduh, eta) +
                               cpt_P_decrease_complement * cpt_value(delta_util_steady, theta, lambduh, eta))
-        
-        # Interpolate values for all 4 potential outcomes (2 action outcomes x 2 shock outcomes)
         val_decrease = interpolate_value(new_wealth_save_float.ravel(), H_decrease_float.ravel(), V).reshape(N, N)
-        val_decrease_cat = interpolate_value(new_wealth_save_float.ravel(), H_decrease_catastrophe_float.ravel(), V).reshape(N, N)
         val_steady = interpolate_value(new_wealth_save_float.ravel(), H.ravel().astype(float), V).reshape(N, N)
-        val_steady_cat = interpolate_value(new_wealth_save_float.ravel(), H_steady_catastrophe_float.ravel(), V).reshape(N, N)
-
-        # Calculate the catastrophe-adjusted future value for each action outcome
-        adj_val_decrease = cpt_P_no_catastrophe * val_decrease + cpt_P_catastrophe * val_decrease_cat
-        adj_val_steady = cpt_P_no_catastrophe * val_steady + cpt_P_catastrophe * val_steady_cat
-        expected_future_val_save = cpt_P_decrease * adj_val_decrease + cpt_P_decrease_complement * adj_val_steady
+        expected_future_val_save = cpt_P_decrease * val_decrease + cpt_P_decrease_complement * val_steady
         save_value = immediate_cpt_save + beta * expected_future_val_save
 
         # --- Invest Action ---
@@ -306,27 +257,16 @@ def value_iteration_pt_cpt(
         if np.any(invest_possible_mask):
             W_invest = W[invest_possible_mask]
             H_invest = H[invest_possible_mask]
-
             W_after_cost = W_invest - invest_cost[invest_possible_mask]
             utility_after_cost = utility(W_after_cost, H_invest, alpha)
             new_wealth_invest_float = compute_new_wealth(W_after_cost, A, utility_after_cost, N)
             H_success_float = np.minimum(H_invest + health_delta[invest_possible_mask], N).astype(float)
-            H_success_catastrophe_float = np.maximum(H_success_float * shock_size, 1).astype(float)
-            H_fail_catastrophe_float = np.maximum(H_invest * shock_size, 1).astype(float)
-
             delta_util_success = utility(new_wealth_invest_float, H_success_float, alpha) - reference_utility[invest_possible_mask]
             delta_util_fail = utility(new_wealth_invest_float, H_invest, alpha) - reference_utility[invest_possible_mask]
             immediate_cpt_invest = cpt_P_increase * cpt_value(delta_util_success, theta, lambduh, eta) + cpt_P_increase_complement * cpt_value(delta_util_fail, theta, lambduh, eta)
-
             val_success = interpolate_value(new_wealth_invest_float, H_success_float, V)
-            val_success_cat = interpolate_value(new_wealth_invest_float, H_success_catastrophe_float, V)
             val_fail = interpolate_value(new_wealth_invest_float, H_invest.astype(float), V)
-            val_fail_cat = interpolate_value(new_wealth_invest_float, H_fail_catastrophe_float, V)
-
-            # Calculate the catastrophe-adjusted future value for each action outcome
-            adj_val_success = cpt_P_no_catastrophe * val_success + cpt_P_catastrophe * val_success_cat
-            adj_val_fail = cpt_P_no_catastrophe * val_fail + cpt_P_catastrophe * val_fail_cat
-            expected_future_val_invest = cpt_P_increase * adj_val_success + cpt_P_increase_complement * adj_val_fail
+            expected_future_val_invest = cpt_P_increase * val_success + cpt_P_increase_complement * val_fail
             invest_value[invest_possible_mask] = immediate_cpt_invest + beta * expected_future_val_invest
 
         # --- Policy and Value Update ---
@@ -353,7 +293,6 @@ def simulate(params, policy, num_steps, initial_states):
     P_H_decrease = params["P_H_decrease"]
     rate = params["rate"]
     A = params["A"]
-    P_health_catastrophe, shock_size = params["P_health_catastrophe"], params["shock_size"]
     num_agents = initial_states.shape[0]
 
     # Agent state is now stored as float
@@ -364,7 +303,6 @@ def simulate(params, policy, num_steps, initial_states):
 
     # Pre-generate all random numbers for efficiency
     action_rng = np.random.uniform(0, 1, size=(num_agents, num_steps - 1))
-    catastrophe_rng = np.random.uniform(0, 1, size=(num_agents, num_steps - 1))
 
     for step in range(1, num_steps):
         w = wealth[:, step - 1].copy()
@@ -391,12 +329,6 @@ def simulate(params, policy, num_steps, initial_states):
         if np.any(save_mask):
             w[save_mask] = compute_new_wealth(w[save_mask], A, utility(w[save_mask], h[save_mask], alpha), N)
             h[save_mask] = np.where(action_rng[save_mask, step - 1] < P_H_decrease, h[save_mask] - health_delta[save_mask], h[save_mask])
-
-        # --- APPLY CATASTROPHIC HEALTH SHOCK ---
-        # This happens to all agents, regardless of their action.
-        catastrophe_mask = catastrophe_rng[:, step - 1] < P_health_catastrophe
-        if np.any(catastrophe_mask):
-            h[catastrophe_mask] = h[catastrophe_mask] * shock_size
 
         wealth[:, step] = np.clip(w, 1, N)
         health[:, step] = np.clip(h, 1, N)
