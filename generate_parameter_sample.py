@@ -18,13 +18,12 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    N_SAMPLES = args.n_samples
     MODEL = args.model
-    SEED = args.seed
-
     if MODEL not in ["cpt", "pt", "eut"]:
         raise Exception(f"Invalid model name: {MODEL}")
-
+    
+    SEED = args.seed
+    N_SAMPLES = args.n_samples
     samples = generate_samples(N_SAMPLES, len(PARAMETER_RANGES), SEED)
 
     scaled_samples = np.zeros_like(samples)
