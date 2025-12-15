@@ -1,5 +1,4 @@
 from experiment import quantize_and_pack, THETA, ETA, BETA, P_H_DECREASE, P_H_INCREASE, SEED
-from generate_parameter_sample import PARAMETER_RANGES
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm.auto import tqdm
 from model import *
@@ -18,7 +17,7 @@ def process_row(row, n_steps, model, grid_size, initial_states):
     policy, params = value_iteration_pt_cpt(
         N=grid_size,
         alpha=alpha,
-        gamma=gamma,
+        gamma=1,
         lambduh=lambduh,
         eta=ETA,
         P_H_increase=P_H_INCREASE,
@@ -60,33 +59,38 @@ if __name__ == "__main__":
     MODEL = args.model
     GRID_SIZE = args.grid_size
 
-    if MODEL not in ["slide_gamma", "slide_lambda", "slide_rate"]:
-        raise Exception("Model must be one of {slide_gamma, slide_lambda, slide_rate}")
-
+    if MODEL != "lambda_bifurcation":
+        raise Exception("Model must be 'lambda_bifurcation'")
     if not os.path.exists(MODEL):
         os.makedirs(MODEL)
 
     with open("initial_states.pickle", "rb") as f:
         initial_states = pickle.load(f)
 
-    # constants
-    ALPHA = 0.5149439061073797
-    A = 0.35610607296843577
-    GAMMA = 1
-    LAMBDUH = 2.423232669295842
-    RATE = 1.1821205285923606
+    # identify PT simulations with average amplitude > 10
+    with open("pt_dominant_frequencies_amplitudes.pickle", "rb") as f:
+        pt_data = pickle.load(f)
 
-    # construct samples
-    num_samples = 25
-    if "gamma" in MODEL:
-        vals = np.linspace(PARAMETER_RANGES["gamma"][0], PARAMETER_RANGES["gamma"][1], num_samples)
-        samples = [(ALPHA, v, LAMBDUH, RATE, A) for v in vals]
-    elif "lambda" in MODEL:
-        vals = np.linspace(1, 2.5, 25)
-        samples = [(ALPHA, GAMMA, v, RATE, A) for v in vals]
-    elif "rate" in MODEL:
-        vals = np.linspace(PARAMETER_RANGES["rate"][0], PARAMETER_RANGES["rate"][1], num_samples)
-        samples = [(ALPHA, GAMMA, LAMBDUH, v, A) for v in vals]
+    THRESHOLD = 10
+    sims = [np.mean(x["amplitudes"]) for x in pt_data]
+    params = []
+    for idx, f_name in enumerate(os.listdir("pt")):
+        if sims[idx] > THRESHOLD:
+            with open(os.path.join("pt", f_name), "rb") as f:
+                res = pickle.load(f)
+            P = res["params"]
+            params.append((
+                P["alpha"], P["A"], P["rate"], P["lambda"]
+            ))
+
+    # run a sweep of lambda values
+    lambda_values = np.linspace(1, 2.5, 9)
+    samples = []
+    for p in params:
+        for L in lambda_values:
+            samples.append(
+                (p[0], 1, L, p[2], p[1])
+            )
 
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_row, row, N_STEPS, MODEL, GRID_SIZE, initial_states) for row in samples]
