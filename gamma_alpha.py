@@ -75,8 +75,8 @@ if __name__ == "__main__":
 
     # simulation samples
     samples = []
-    for alpha in np.linspace(0.3, 0.7, 9):
-        for gamma in np.linspace(0.3, 0.9, 9):
+    for alpha in np.linspace(0.3, 0.7, 16):
+        for gamma in np.linspace(0.3, 0.9, 16):
             samples.append(
                 (alpha, gamma, LAMBDUH, RATE, A)
             )
