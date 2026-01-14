@@ -51,12 +51,12 @@ These scripts run targeted parameter sweeps for specific figures.
 **Bifurcation Analysis (Figure 8):**
 *Requires `pt` results from Section 2 to be available.*
 ```bash
-uv run lambda_bifurcation.py --model lambda_bifurcation --n-steps 5000
+uv run lambda_bifurcation.py --model lambda_bifurcation
 ```
 
 **Joint Wealth/Probability Sweep (Figure 10):**
 ```bash
-uv run gamma_alpha.py --model gamma_alpha_sweep --n-steps 5000
+uv run gamma_alpha.py --model gamma_alpha
 ```
 
 ## 4. Reproducing Figures (Notebook Guide)
