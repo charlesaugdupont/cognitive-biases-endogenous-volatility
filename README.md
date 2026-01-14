@@ -39,9 +39,9 @@ uv run experiment.py --model cpt --n-steps 5000 --max-workers 6
 Once the core experiments are done, run the spectral analysis to detect limit cycles.
 
 ```bash
-uv run compute_dominant_frequencies.py --model eut --max-workers 6
-uv run compute_dominant_frequencies.py --model pt --max-workers 6
-uv run compute_dominant_frequencies.py --model cpt --max-workers 6
+uv run compute_frequencies.py --model eut --max-workers 6
+uv run compute_frequencies.py --model pt --max-workers 6
+uv run compute_frequencies.py --model cpt --max-workers 6
 ```
 
 ## 3. Specialized Experiments
@@ -68,10 +68,10 @@ The figures in the manuscript are generated using the Jupyter notebooks located 
 | `health_cost.ipynb` | None | **Fig 2** | Plots the cost/benefit functions and "physics" of the model. |
 | `sen_welfare.ipynb` | `experiment.py` | **Fig 3, 4,**<br>**11, 12, 13** | Computes Sen Welfare metrics, Kernel Density Estimates (KDE), and marginal parameter sensitivities for all models. |
 | `sensitivity_analysis.ipynb` | `sen_welfare.ipynb` | **Fig 14** | Performs PAWN Global Sensitivity Analysis on the welfare metrics derived in the previous notebook. |
-| `frequency_amplitude_analysis.ipynb` | `compute_dominant_frequencies.py` | **Fig 5, 6, 9** | Visualizes agent trajectories, amplitude distributions, and stability phase diagrams (structural stability). |
-| `attractors.ipynb` | `compute_dominant_frequencies.py` | **Fig 7** | Maps the spatial distribution of fixed points vs. limit cycles to visualize the "Fracture" in policy space. |
-| `lambda_bifurcation_analysis.ipynb` | `lambda_bifurcation.py` | **Fig 8** | Visualizes the bifurcation tipping point (transition to limit cycles) as Loss Aversion ($\lambda$) increases. |
-| `gamma_alpha_experiment.ipynb` | `gamma_alpha.py` | **Fig 10** | Heatmaps showing the tipping point caused by Probability Weighting ($\gamma$) and Wealth Preference ($\alpha$). |
+| `frequency_analysis.ipynb` | `compute_frequencies.py` | **Fig 5, 6, 9** | Visualizes agent trajectories, amplitude distributions, and stability phase diagrams (structural stability). |
+| `attractors.ipynb` | `compute_frequencies.py` | **Fig 7** | Maps the spatial distribution of fixed points vs. limit cycles to visualize the "Fracture" in policy space. |
+| `lambda_bifurcation.ipynb` | `lambda_bifurcation.py` | **Fig 8** | Visualizes the bifurcation tipping point (transition to limit cycles) as Loss Aversion ($\lambda$) increases. |
+| `gamma_alpha.ipynb` | `gamma_alpha.py` | **Fig 10** | Heatmaps showing the tipping point caused by Probability Weighting ($\gamma$) and Wealth Preference ($\alpha$). |
 
 ---
 
