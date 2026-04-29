@@ -61,6 +61,21 @@ def probability_weighting(p, gamma):
     p = np.clip(p, 1e-10, 1 - 1e-10)
     return (p**gamma) / ((p**gamma + (1-p)**gamma)**(1/gamma))
 
+def probability_weighting_prelec(p, gamma, delta=1.0):
+    """
+    Prelec (1998) compound invariance weighting function.
+    """
+    p = np.clip(p, 1e-10, 1 - 1e-10)
+    return np.exp(-delta * (-np.log(p)) ** gamma)
+
+def probability_weighting_goldstein_einhorn(p, gamma, delta=1.0):
+    """
+    Goldstein & Einhorn (1987) weighting function.
+    """
+    p = np.clip(p, 1e-10, 1 - 1e-10)
+    num = delta * p ** gamma
+    return num / (num + (1 - p) ** gamma)
+
 def cpt_value(x, theta, lambduh, eta):
     v = np.empty_like(x, dtype=float)
     pos_mask = x >= 0
@@ -225,11 +240,11 @@ def value_iteration_pt_cpt(
         "beta": beta
     }
 
-    # Pre-calculate CPT probabilities for actions
+    # Rank-dependent cumulative weighting for probabilities
     cpt_P_increase = probability_weighting(P_H_increase, gamma)
-    cpt_P_increase_complement = probability_weighting(1 - P_H_increase, gamma)
-    cpt_P_decrease = probability_weighting(P_H_decrease, gamma)
+    cpt_P_increase_complement = 1 - cpt_P_increase
     cpt_P_decrease_complement = probability_weighting(1 - P_H_decrease, gamma)
+    cpt_P_decrease = 1 - cpt_P_decrease_complement
 
     w_vals, h_vals = np.arange(1, N + 1), np.arange(1, N + 1)
     W, H = np.meshgrid(w_vals, h_vals, indexing='ij')
